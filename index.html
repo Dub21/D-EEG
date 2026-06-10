@@ -549,6 +549,126 @@
   </section>
   <!-- End brain map gallery -->
 
+
+  <!-- Model Statistics -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Model Diagnostics</h2>
+      <p class="has-text-centered" style="margin-bottom: 2rem; color: #666;">
+        GAMLSS model fit statistics for each EEG feature and region of interest.
+        Shapiro-Wilk test assesses normality of residuals in the control group.
+      </p>
+
+      <div class="field" style="margin-bottom: 1rem;">
+        <div class="control has-icons-left">
+          <input class="input" type="text" id="stats-search" placeholder="Search by marker (e.g. precentral_lh_alpha_periodic)" oninput="filterStats()">
+          <span class="icon is-left"><i class="fas fa-search"></i></span>
+        </div>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="table is-fullwidth is-striped is-hoverable is-bordered" style="font-size: 0.82rem;" id="stats-table">
+          <thead>
+            <tr>
+              <th onclick="sortStats(0)" style="cursor:pointer;">Marker &#8597;</th>
+              <th onclick="sortStats(1)" style="cursor:pointer;">Shapiro W &#8597;</th>
+              <th onclick="sortStats(2)" style="cursor:pointer;">Shapiro p &#8597;</th>
+              <th onclick="sortStats(3)" style="cursor:pointer;">Skewness &#8597;</th>
+              <th onclick="sortStats(4)" style="cursor:pointer;">Kurtosis &#8597;</th>
+              <th onclick="sortStats(5)" style="cursor:pointer;">AIC &#8597;</th>
+              <th onclick="sortStats(6)" style="cursor:pointer;">BIC &#8597;</th>
+              <th onclick="sortStats(7)" style="cursor:pointer;">SMSE &#8597;</th>
+              <th onclick="sortStats(8)" style="cursor:pointer;">MSLL &#8597;</th>
+            </tr>
+          </thead>
+          <tbody id="stats-tbody">
+            <tr><td colspan="9" style="text-align:center; color:#aaa; padding: 2rem;">Loading statistics...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size: 0.8rem; color: #888; margin-top: 0.5rem;">
+        Shapiro-Wilk p &gt; 0.05 indicates normally distributed residuals.
+        SMSE: standardised mean squared error; MSLL: mean standardised log loss.
+        Click column headers to sort.
+      </p>
+    </div>
+  </section>
+  <!-- End Model Statistics -->
+
+  <script>
+    var statsData = [];
+    var statsSortCol = -1;
+    var statsSortAsc = true;
+
+    fetch('static/data/stats/model_stats.csv')
+      .then(function(r) { return r.text(); })
+      .then(function(text) {
+        var lines = text.trim().split('\n');
+        var headers = lines[0].split(',');
+        statsData = [];
+        for (var i = 1; i < lines.length; i++) {
+          var cols = lines[i].split(',');
+          if (cols.length >= 2) statsData.push(cols);
+        }
+        renderStats(statsData);
+      })
+      .catch(function() {
+        document.getElementById('stats-tbody').innerHTML =
+          '<tr><td colspan="9" style="text-align:center; color:#aaa;">Statistics not yet available</td></tr>';
+      });
+
+    function renderStats(data) {
+      var tbody = document.getElementById('stats-tbody');
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#aaa;">No results found</td></tr>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var r = data[i];
+        var shapiro_p = parseFloat(r[2]);
+        var pStyle = shapiro_p < 0.05 ? 'color:#c0392b;font-weight:600;' : 'color:#27ae60;';
+        html += '<tr>';
+        html += '<td style="font-family:monospace;font-size:0.78rem;">' + (r[0] || '') + '</td>';
+        html += '<td>' + (parseFloat(r[1]) ? parseFloat(r[1]).toFixed(3) : '') + '</td>';
+        html += '<td style="' + pStyle + '">' + (shapiro_p ? shapiro_p.toFixed(4) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[3]) ? parseFloat(r[3]).toFixed(3) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[4]) ? parseFloat(r[4]).toFixed(3) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[5]) ? parseFloat(r[5]).toFixed(1) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[6]) ? parseFloat(r[6]).toFixed(1) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[7]) ? parseFloat(r[7]).toFixed(4) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[8]) ? parseFloat(r[8]).toFixed(4) : '') + '</td>';
+        html += '</tr>';
+      }
+      tbody.innerHTML = html;
+    }
+
+    function filterStats() {
+      var query = document.getElementById('stats-search').value.toLowerCase();
+      var filtered = statsData.filter(function(r) {
+        return r[0] && r[0].toLowerCase().indexOf(query) !== -1;
+      });
+      renderStats(filtered);
+    }
+
+    function sortStats(col) {
+      if (statsSortCol === col) {
+        statsSortAsc = !statsSortAsc;
+      } else {
+        statsSortCol = col;
+        statsSortAsc = true;
+      }
+      var sorted = statsData.slice().sort(function(a, b) {
+        var av = isNaN(parseFloat(a[col])) ? a[col] : parseFloat(a[col]);
+        var bv = isNaN(parseFloat(b[col])) ? b[col] : parseFloat(b[col]);
+        if (av < bv) return statsSortAsc ? -1 : 1;
+        if (av > bv) return statsSortAsc ? 1 : -1;
+        return 0;
+      });
+      renderStats(sorted);
+    }
+  </script>
+
   <!-- BibTeX -->
   <section class="section hero is-light" id="BibTeX">
     <div class="container is-max-desktop content">
