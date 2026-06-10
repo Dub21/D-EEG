@@ -93,6 +93,15 @@
     "license": "https://creativecommons.org/licenses/by/4.0/"
   }
   </script>
+
+  <style>
+    .table-container { overflow-x: auto; }
+    .table th, .table td { font-size: 0.85rem; white-space: nowrap; }
+    .table th.group-header { background-color: #f0f0f0; font-style: italic; }
+    .acronym-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.25rem 2rem; margin-top: 1rem; }
+    .acronym-item { font-size: 0.85rem; color: #555; }
+    .acronym-item strong { color: #333; }
+  </style>
 </head>
 <body>
 
@@ -147,12 +156,12 @@
 
             <div class="is-size-5 publication-authors">
               <span class="author-block"><a href="https://github.com/Dub21" target="_blank">Adrien E.E. Dubois</a><sup>1,2</sup>,</span>
-              <span class="author-block">Sarah Lippé<sup>1,3</sup>,</span>
+              <span class="author-block">Sarah Lipp&eacute;<sup>1,3</sup>,</span>
               <span class="author-block">Charles-Olivier Martin<sup>1</sup>,</span>
               <span class="author-block">Inga Sophia Knoth<sup>1</sup>,</span>
-              <span class="author-block">Valérie Kathleen Fontaine<sup>1</sup>,</span>
-              <span class="author-block">Anne-Marie Bélanger<sup>1</sup>,</span>
-              <span class="author-block">Kenza Latrèche<sup>7</sup>,</span>
+              <span class="author-block">Val&eacute;rie Kathleen Fontaine<sup>1</sup>,</span>
+              <span class="author-block">Anne-Marie B&eacute;langer<sup>1</sup>,</span>
+              <span class="author-block">Kenza Latr&egrave;che<sup>7</sup>,</span>
               <span class="author-block">Marie Schaer<sup>7</sup>,</span>
               <span class="author-block">James C. McPartland<sup>8,9</sup>,</span>
               <span class="author-block">Sara Jane Webb<sup>10</sup>,</span>
@@ -163,15 +172,15 @@
               <span class="author-block">Craig A. Erickson<sup>14,16</sup>,</span>
               <span class="author-block">Borja Rodriguez-Herreros<sup>13</sup>,</span>
               <span class="author-block">Nadia Chabane<sup>13</sup>,</span>
-              <span class="author-block"><a href="https://www.jacquemont-lab.org" target="_blank">Sébastien Jacquemont</a><sup>1,4,*</sup>,</span>
+              <span class="author-block"><a href="https://www.jacquemont-lab.org" target="_blank">S&eacute;bastien Jacquemont</a><sup>1,4,*</sup>,</span>
               <span class="author-block"><a href="https://www.excentriclab.com" target="_blank">Guillaume Dumas</a><sup>1,5,6,*</sup></span>
             </div>
 
             <div class="is-size-6 publication-authors" style="margin-top: 0.75rem;">
               <span class="author-block" style="color: #666;">
                 <sup>1</sup>CHU Sainte-Justine &nbsp;
-                <sup>2</sup>Université de Montréal &nbsp;
-                <sup>5,6</sup>Mila – Québec AI Institute &nbsp;
+                <sup>2</sup>Universit&eacute; de Montr&eacute;al &nbsp;
+                <sup>5,6</sup>Mila &ndash; Qu&eacute;bec AI Institute &nbsp;
                 and others
               </span>
               <br>
@@ -180,42 +189,36 @@
 
             <div class="column has-text-centered" style="margin-top: 1rem;">
               <div class="publication-links">
-
                 <span class="link-block">
                   <a href="#" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon"><i class="fas fa-file-pdf"></i></span>
                     <span>Paper</span>
                   </a>
                 </span>
-
                 <span class="link-block">
                   <a href="#" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon"><i class="ai ai-arxiv"></i></span>
                     <span>arXiv</span>
                   </a>
                 </span>
-
                 <span class="link-block">
                   <a href="https://github.com/Dub21/Markers" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon"><i class="fab fa-github"></i></span>
                     <span>Features</span>
                   </a>
                 </span>
-
                 <span class="link-block">
                   <a href="https://github.com/ppsp-team/PPSPrep" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon"><i class="fab fa-github"></i></span>
                     <span>Preprocessing</span>
                   </a>
                 </span>
-
                 <span class="link-block">
                   <a href="https://github.com/ppsp-team/PyNM" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon"><i class="fab fa-github"></i></span>
                     <span>PyNM</span>
                   </a>
                 </span>
-
               </div>
             </div>
 
@@ -233,15 +236,9 @@
         <div class="column is-four-fifths">
           <h2 class="title is-3">Abstract</h2>
           <div class="content has-text-justified">
-            <p>
-              Neurodevelopmental conditions (NDCs) are highly heritable disorders characterized by substantial genetic and phenotypic heterogeneity, yet robust electrophysiological biomarkers remain lacking. Whether this heterogeneity converges on shared neurophysiological alterations or instead reflects distinct disorder- and variant-specific signatures remains unclear. Here, we assembled the largest transdiagnostic resting-state EEG dataset to date, comprising 4,500 high-density recordings after quality control across 11 neurodevelopmental conditions and multiple rare genetic variants spanning ages 5 months to 66 years. Using normative source-space modelling, we characterized developmental trajectories in a typically developing reference population (n = 938) and quantified individual-level deviations across clinical and genetic groups.
-            </p>
-            <p>
-              Across idiopathic diagnoses, deviations were small (d &lt; 0.5) and strongly correlated across conditions, revealing a shared transdiagnostic profile characterized by disrupted spectral organization, connectivity, and signal complexity. In contrast, individual rare genetic variants showed substantially larger effects (d &gt; 0.8) and non-convergent neurophysiological signatures. Notably, 16p11.2 deletions and duplications exhibited mirror-opposite deviation patterns across multiple EEG features. Across both clinical and genetic groups, deviations showed a consistent spatial organization concentrated within sensorimotor cortices and aligned with the principal gradient of cortical gene expression. Subsampling analyses revealed that stable effect size estimates required substantially larger cohorts than typically used in the field, exceeding 400 participants for ASD but as few as 60 for Fragile X syndrome.
-            </p>
-            <p>
-              Together, these findings establish a large-scale transdiagnostic normative framework for source-space EEG in neurodevelopmental conditions and demonstrate that electrophysiological heterogeneity depends strongly on the level of biological stratification.
-            </p>
+            <p>Neurodevelopmental conditions (NDCs) are highly heritable disorders characterized by substantial genetic and phenotypic heterogeneity, yet robust electrophysiological biomarkers remain lacking. Whether this heterogeneity converges on shared neurophysiological alterations or instead reflects distinct disorder- and variant-specific signatures remains unclear. Here, we assembled the largest transdiagnostic resting-state EEG dataset to date, comprising 4,500 high-density recordings after quality control across 11 neurodevelopmental conditions and multiple rare genetic variants spanning ages 5 months to 66 years. Using normative source-space modelling, we characterized developmental trajectories in a typically developing reference population (n = 938) and quantified individual-level deviations across clinical and genetic groups.</p>
+            <p>Across idiopathic diagnoses, deviations were small (d &lt; 0.5) and strongly correlated across conditions, revealing a shared transdiagnostic profile characterized by disrupted spectral organization, connectivity, and signal complexity. In contrast, individual rare genetic variants showed substantially larger effects (d &gt; 0.8) and non-convergent neurophysiological signatures. Notably, 16p11.2 deletions and duplications exhibited mirror-opposite deviation patterns across multiple EEG features. Across both clinical and genetic groups, deviations showed a consistent spatial organization concentrated within sensorimotor cortices and aligned with the principal gradient of cortical gene expression. Subsampling analyses revealed that stable effect size estimates required substantially larger cohorts than typically used in the field, exceeding 400 participants for ASD but as few as 60 for Fragile X syndrome.</p>
+            <p>Together, these findings establish a large-scale transdiagnostic normative framework for source-space EEG in neurodevelopmental conditions and demonstrate that electrophysiological heterogeneity depends strongly on the level of biological stratification.</p>
           </div>
         </div>
       </div>
@@ -254,96 +251,103 @@
     <div class="container is-max-desktop">
       <h2 class="title is-3 has-text-centered">Dataset</h2>
       <p class="has-text-centered" style="margin-bottom: 2rem; color: #666;">
-        4,500 resting-state EEG recordings acquired with 128-channel EGI systems across 8 independent sites,
-        spanning ages 5 months to 66 years.
+        4,500 resting-state EEG recordings acquired with 128-channel EGI systems across 8 independent sites, spanning ages 5 months to 66 years.
       </p>
 
-      <div class="columns is-centered">
-        <div class="column">
-          <div class="content">
-            <table class="table is-fullwidth is-striped is-hoverable">
-              <thead>
-                <tr>
-                  <th>Dataset</th>
-                  <th>Full name</th>
-                  <th>N</th>
-                  <th>Age (mean ± SD)</th>
-                  <th>Primary groups</th>
-                  <th>Access</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>ABB</strong></td>
-                  <td>Autism Brain &amp; Behaviour</td>
-                  <td>299</td>
-                  <td>&mdash;</td>
-                  <td>TD, ASD</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>ABC-CT</strong></td>
-                  <td>Autism Biomarkers Consortium for Clinical Trials</td>
-                  <td>305</td>
-                  <td>&mdash;</td>
-                  <td>TD, ASD</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>CHUV</strong></td>
-                  <td>Centre Hospitalier Universitaire Vaudois</td>
-                  <td>37</td>
-                  <td>&mdash;</td>
-                  <td>ASD, CNV</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>CIN</strong></td>
-                  <td>Cincinnati Children's Hospital</td>
-                  <td>71</td>
-                  <td>&mdash;</td>
-                  <td>TD, FXS</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>HBN</strong></td>
-                  <td>Healthy Brain Network</td>
-                  <td>2403</td>
-                  <td>10 ± 4</td>
-                  <td>TD, ASD, ADHD, and more</td>
-                  <td><a href="https://fcon_1000.projects.nitrc.org/indi/cmi_healthy_brain_network/" target="_blank">Public</a></td>
-                </tr>
-                <tr>
-                  <td><strong>MGF</strong></td>
-                  <td>Montréal Genetic Family</td>
-                  <td>746</td>
-                  <td>&mdash;</td>
-                  <td>TD, CNV</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>RDB</strong></td>
-                  <td>Hôpital Robert-Debré, Paris</td>
-                  <td>515</td>
-                  <td>&mdash;</td>
-                  <td>TD, ASD, ADHD</td>
-                  <td>Upon request</td>
-                </tr>
-                <tr>
-                  <td><strong>VIP</strong></td>
-                  <td>Simons Searchlight</td>
-                  <td>54</td>
-                  <td>&mdash;</td>
-                  <td>16p11.2 DEL/DUP</td>
-                  <td><a href="https://base.sfari.org/dataset/DS0000050" target="_blank">SFARI Base</a></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="has-text-centered" style="font-size: 0.85rem; color: #888; margin-top: -1rem;">
-            TD: typically developing; ASD: autism spectrum disorder; ADHD: attention-deficit/hyperactivity disorder;
-            FXS: Fragile X syndrome; CNV: copy number variant.
-          </p>
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable is-bordered" style="font-size:0.82rem;">
+          <thead>
+            <tr>
+              <th rowspan="2">Group</th>
+              <th rowspan="2">N</th>
+              <th rowspan="2">Sex (F/M)</th>
+              <th rowspan="2">Age (mean&plusmn;SD)</th>
+              <th colspan="8" class="has-text-centered">Dataset</th>
+            </tr>
+            <tr>
+              <th>ABB</th>
+              <th>ABC-CT</th>
+              <th>CHUV</th>
+              <th>CIN</th>
+              <th>HBN</th>
+              <th>MGF</th>
+              <th>RDB</th>
+              <th>VIP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="12" class="group-header has-text-weight-semibold">Unselected / General population</td></tr>
+            <tr><td>TD</td><td>944</td><td>495/449</td><td>18&plusmn;15</td><td>94</td><td>108</td><td>19</td><td>71</td><td>228</td><td>333</td><td>77</td><td>14</td></tr>
+            <tr><td colspan="12" class="group-header has-text-weight-semibold">Ascertained for NDCs</td></tr>
+            <tr><td>AD</td><td>849</td><td>474/375</td><td>11&plusmn;5</td><td>0</td><td>0</td><td>0</td><td>0</td><td>826</td><td>23</td><td>0</td><td>0</td></tr>
+            <tr><td>ADHD</td><td>1663</td><td>1154/509</td><td>10&plusmn;4</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1468</td><td>78</td><td>117</td><td>0</td></tr>
+            <tr><td>ASD</td><td>1162</td><td>891/271</td><td>9&plusmn;4</td><td>205</td><td>197</td><td>0</td><td>0</td><td>351</td><td>74</td><td>335</td><td>0</td></tr>
+            <tr><td>DICCD</td><td>477</td><td>298/179</td><td>10&plusmn;3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>383</td><td>1</td><td>93</td><td>0</td></tr>
+            <tr><td>ED</td><td>227</td><td>168/59</td><td>9&plusmn;3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>227</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>ID</td><td>204</td><td>135/69</td><td>13&plusmn;10</td><td>0</td><td>0</td><td>0</td><td>0</td><td>91</td><td>90</td><td>10</td><td>13</td></tr>
+            <tr><td>LD</td><td>441</td><td>307/134</td><td>9&plusmn;4</td><td>0</td><td>0</td><td>0</td><td>0</td><td>319</td><td>122</td><td>0</td><td>0</td></tr>
+            <tr><td>MD</td><td>233</td><td>184/49</td><td>10&plusmn;3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>200</td><td>33</td><td>0</td><td>0</td></tr>
+            <tr><td>MDD</td><td>227</td><td>114/113</td><td>15&plusmn;6</td><td>0</td><td>0</td><td>0</td><td>0</td><td>221</td><td>6</td><td>0</td><td>0</td></tr>
+            <tr><td>OCRD</td><td>119</td><td>64/55</td><td>12&plusmn;4</td><td>0</td><td>0</td><td>0</td><td>0</td><td>118</td><td>1</td><td>0</td><td>0</td></tr>
+            <tr><td>SLD</td><td>628</td><td>397/231</td><td>10&plusmn;3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>603</td><td>25</td><td>0</td><td>0</td></tr>
+            <tr><td><strong>IDI</strong></td><td><strong>3192</strong></td><td><strong>2140/1052</strong></td><td><strong>11&plusmn;8</strong></td><td>205</td><td>197</td><td>0</td><td>0</td><td>2175</td><td>177</td><td>438</td><td>0</td></tr>
+            <tr><td colspan="12" class="group-header has-text-weight-semibold">Ascertained for Genetic liability</td></tr>
+            <tr><td>16p DEL</td><td>51</td><td>27/24</td><td>8.1</td><td>0</td><td>0</td><td>13</td><td>0</td><td>0</td><td>13</td><td>0</td><td>25</td></tr>
+            <tr><td>DEL</td><td>179</td><td>92/87</td><td>13&plusmn;14</td><td>0</td><td>0</td><td>16</td><td>0</td><td>0</td><td>138</td><td>0</td><td>25</td></tr>
+            <tr><td>16p DUP</td><td>26</td><td>18/8</td><td>11&plusmn;12</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>11</td><td>0</td><td>15</td></tr>
+            <tr><td>DUP</td><td>115</td><td>67/48</td><td>15&plusmn;15</td><td>0</td><td>0</td><td>2</td><td>0</td><td>0</td><td>98</td><td>0</td><td>15</td></tr>
+            <tr><td>FXS</td><td>70</td><td>38/32</td><td>20&plusmn;10</td><td>0</td><td>0</td><td>0</td><td>0</td><td>70</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td><strong>GEN</strong></td><td><strong>364</strong></td><td><strong>197/167</strong></td><td><strong>15&plusmn;14</strong></td><td>0</td><td>0</td><td>18</td><td>0</td><td>70</td><td>236</td><td>0</td><td>40</td></tr>
+            <tr style="background:#eee;"><td><strong>TOTAL</strong></td><td><strong>4500</strong></td><td><strong>2832/1668</strong></td><td><strong>13&plusmn;10</strong></td><td><strong>299</strong></td><td><strong>305</strong></td><td><strong>37</strong></td><td><strong>71</strong></td><td><strong>2403</strong></td><td><strong>746</strong></td><td><strong>515</strong></td><td><strong>54</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Dataset acronyms -->
+      <div style="margin-top: 1.5rem;">
+        <p class="has-text-weight-semibold" style="margin-bottom: 0.5rem;">Datasets</p>
+        <div class="acronym-grid">
+          <div class="acronym-item"><strong>ABB:</strong> Autism Brain &amp; Behaviour</div>
+          <div class="acronym-item"><strong>ABC-CT:</strong> Autism Biomarkers Consortium for Clinical Trials</div>
+          <div class="acronym-item"><strong>CHUV:</strong> Centre Hospitalier Universitaire Vaudois</div>
+          <div class="acronym-item"><strong>CIN:</strong> Cincinnati Children's Hospital</div>
+          <div class="acronym-item"><strong>HBN:</strong> Healthy Brain Network</div>
+          <div class="acronym-item"><strong>MGF:</strong> Montr&eacute;al Genetic Family</div>
+          <div class="acronym-item"><strong>RDB:</strong> H&ocirc;pital Robert-Debr&eacute;, Paris</div>
+          <div class="acronym-item"><strong>VIP:</strong> Simons Searchlight</div>
+        </div>
+      </div>
+
+      <!-- Diagnosis acronyms -->
+      <div style="margin-top: 1.25rem;">
+        <p class="has-text-weight-semibold" style="margin-bottom: 0.5rem;">Diagnoses</p>
+        <div class="acronym-grid">
+          <div class="acronym-item"><strong>AD:</strong> Anxiety Disorder</div>
+          <div class="acronym-item"><strong>ADHD:</strong> Attention-Deficit/Hyperactivity Disorder</div>
+          <div class="acronym-item"><strong>ASD:</strong> Autism Spectrum Disorder</div>
+          <div class="acronym-item"><strong>DICCD:</strong> Disruptive, Impulse-Control, and Conduct Disorders</div>
+          <div class="acronym-item"><strong>ED:</strong> Elimination Disorders</div>
+          <div class="acronym-item"><strong>ID:</strong> Intellectual Disability</div>
+          <div class="acronym-item"><strong>IDI:</strong> Idiopathic (all NDCs without identified genetic variant)</div>
+          <div class="acronym-item"><strong>LD:</strong> Language Disorder</div>
+          <div class="acronym-item"><strong>MD:</strong> Motor Disorders</div>
+          <div class="acronym-item"><strong>MDD:</strong> Major Depressive Disorder</div>
+          <div class="acronym-item"><strong>OCRD:</strong> Obsessive-Compulsive and Related Disorders</div>
+          <div class="acronym-item"><strong>SLD:</strong> Specific Learning Disorder</div>
+          <div class="acronym-item"><strong>TD:</strong> Typically Developing</div>
+        </div>
+      </div>
+
+      <!-- Genetic acronyms -->
+      <div style="margin-top: 1.25rem;">
+        <p class="has-text-weight-semibold" style="margin-bottom: 0.5rem;">Genetic variants</p>
+        <div class="acronym-grid">
+          <div class="acronym-item"><strong>DEL:</strong> Deletion (all)</div>
+          <div class="acronym-item"><strong>DUP:</strong> Duplication (all)</div>
+          <div class="acronym-item"><strong>16p DEL:</strong> 16p11.2 deletion</div>
+          <div class="acronym-item"><strong>16p DUP:</strong> 16p11.2 duplication</div>
+          <div class="acronym-item"><strong>FXS:</strong> Fragile X Syndrome</div>
+          <div class="acronym-item"><strong>GEN:</strong> All genetic variants combined</div>
         </div>
       </div>
 
@@ -357,11 +361,9 @@
       <h2 class="title is-3 has-text-centered">Normative Trajectories</h2>
       <p class="has-text-centered" style="margin-bottom: 2rem; color: #666;">
         Developmental trajectories of EEG features modelled in typically developing participants using GAMLSS,
-        shown separately for each cortical region of interest and feature. Individual clinical and genetic group
-        deviations are overlaid as z-scores.
+        shown separately for each cortical region of interest and feature.
       </p>
 
-      <!-- Feature dropdown -->
       <div class="columns is-centered" style="margin-bottom: 1.5rem;">
         <div class="column is-one-third">
           <div class="field">
@@ -384,44 +386,94 @@
         </div>
         <div class="column is-one-third">
           <div class="field">
+            <label class="label" id="band-label">Frequency band</label>
+            <div class="control" id="band-control">
+              <div class="select is-fullwidth">
+                <select id="traj-band-select" onchange="updateTrajectory()">
+                  <option value="delta">&delta; Delta (2&ndash;4 Hz)</option>
+                  <option value="theta">&theta; Theta (4&ndash;8 Hz)</option>
+                  <option value="alpha">&alpha; Alpha (8&ndash;12 Hz)</option>
+                  <option value="beta">&beta; Beta (12&ndash;30 Hz)</option>
+                  <option value="gamma">&gamma; Gamma (30&ndash;45 Hz)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-third">
+          <div class="field">
             <label class="label">Region of interest</label>
             <div class="control">
               <div class="select is-fullwidth">
                 <select id="traj-roi-select" onchange="updateTrajectory()">
-                  <option value="bankssts">Banks of superior temporal sulcus</option>
-                  <option value="caudalanteriorcingulate">Caudal anterior cingulate</option>
-                  <option value="caudalmiddlefrontal">Caudal middle frontal</option>
-                  <option value="cuneus">Cuneus</option>
-                  <option value="entorhinal">Entorhinal</option>
-                  <option value="fusiform">Fusiform</option>
-                  <option value="inferiorparietal">Inferior parietal</option>
-                  <option value="inferiortemporal">Inferior temporal</option>
-                  <option value="isthmuscingulate">Isthmus cingulate</option>
-                  <option value="lateraloccipital">Lateral occipital</option>
-                  <option value="lateralorbitofrontal">Lateral orbitofrontal</option>
-                  <option value="lingual">Lingual</option>
-                  <option value="medialorbitofrontal">Medial orbitofrontal</option>
-                  <option value="middletemporal">Middle temporal</option>
-                  <option value="parahippocampal">Parahippocampal</option>
-                  <option value="paracentral">Paracentral</option>
-                  <option value="parsopercularis">Pars opercularis</option>
-                  <option value="parsorbitalis">Pars orbitalis</option>
-                  <option value="parstriangularis">Pars triangularis</option>
-                  <option value="pericalcarine">Pericalcarine</option>
-                  <option value="postcentral">Postcentral</option>
-                  <option value="posteriorcingulate">Posterior cingulate</option>
-                  <option value="precentral">Precentral</option>
-                  <option value="precuneus">Precuneus</option>
-                  <option value="rostralanteriorcingulate">Rostral anterior cingulate</option>
-                  <option value="rostralmiddlefrontal">Rostral middle frontal</option>
-                  <option value="superiorfrontal">Superior frontal</option>
-                  <option value="superiorparietal">Superior parietal</option>
-                  <option value="superiortemporal">Superior temporal</option>
-                  <option value="supramarginal">Supramarginal</option>
-                  <option value="frontalpole">Frontal pole</option>
-                  <option value="temporalpole">Temporal pole</option>
-                  <option value="transversetemporal">Transverse temporal</option>
-                  <option value="insula">Insula</option>
+                  <option value="bankssts_lh">Banks STS (L)</option>
+                  <option value="bankssts_rh">Banks STS (R)</option>
+                  <option value="caudalanteriorcingulate_lh">Caudal ant. cingulate (L)</option>
+                  <option value="caudalanteriorcingulate_rh">Caudal ant. cingulate (R)</option>
+                  <option value="caudalmiddlefrontal_lh">Caudal mid. frontal (L)</option>
+                  <option value="caudalmiddlefrontal_rh">Caudal mid. frontal (R)</option>
+                  <option value="cuneus_lh">Cuneus (L)</option>
+                  <option value="cuneus_rh">Cuneus (R)</option>
+                  <option value="entorhinal_lh">Entorhinal (L)</option>
+                  <option value="entorhinal_rh">Entorhinal (R)</option>
+                  <option value="fusiform_lh">Fusiform (L)</option>
+                  <option value="fusiform_rh">Fusiform (R)</option>
+                  <option value="inferiorparietal_lh">Inferior parietal (L)</option>
+                  <option value="inferiorparietal_rh">Inferior parietal (R)</option>
+                  <option value="inferiortemporal_lh">Inferior temporal (L)</option>
+                  <option value="inferiortemporal_rh">Inferior temporal (R)</option>
+                  <option value="isthmuscingulate_lh">Isthmus cingulate (L)</option>
+                  <option value="isthmuscingulate_rh">Isthmus cingulate (R)</option>
+                  <option value="lateraloccipital_lh">Lateral occipital (L)</option>
+                  <option value="lateraloccipital_rh">Lateral occipital (R)</option>
+                  <option value="lateralorbitofrontal_lh">Lat. orbitofrontal (L)</option>
+                  <option value="lateralorbitofrontal_rh">Lat. orbitofrontal (R)</option>
+                  <option value="lingual_lh">Lingual (L)</option>
+                  <option value="lingual_rh">Lingual (R)</option>
+                  <option value="medialorbitofrontal_lh">Med. orbitofrontal (L)</option>
+                  <option value="medialorbitofrontal_rh">Med. orbitofrontal (R)</option>
+                  <option value="middletemporal_lh">Middle temporal (L)</option>
+                  <option value="middletemporal_rh">Middle temporal (R)</option>
+                  <option value="parahippocampal_lh">Parahippocampal (L)</option>
+                  <option value="parahippocampal_rh">Parahippocampal (R)</option>
+                  <option value="paracentral_lh">Paracentral (L)</option>
+                  <option value="paracentral_rh">Paracentral (R)</option>
+                  <option value="parsopercularis_lh">Pars opercularis (L)</option>
+                  <option value="parsopercularis_rh">Pars opercularis (R)</option>
+                  <option value="parsorbitalis_lh">Pars orbitalis (L)</option>
+                  <option value="parsorbitalis_rh">Pars orbitalis (R)</option>
+                  <option value="parstriangularis_lh">Pars triangularis (L)</option>
+                  <option value="parstriangularis_rh">Pars triangularis (R)</option>
+                  <option value="pericalcarine_lh">Pericalcarine (L)</option>
+                  <option value="pericalcarine_rh">Pericalcarine (R)</option>
+                  <option value="postcentral_lh">Postcentral (L)</option>
+                  <option value="postcentral_rh">Postcentral (R)</option>
+                  <option value="posteriorcingulate_lh">Posterior cingulate (L)</option>
+                  <option value="posteriorcingulate_rh">Posterior cingulate (R)</option>
+                  <option value="precentral_lh">Precentral (L)</option>
+                  <option value="precentral_rh">Precentral (R)</option>
+                  <option value="precuneus_lh">Precuneus (L)</option>
+                  <option value="precuneus_rh">Precuneus (R)</option>
+                  <option value="rostralanteriorcingulate_lh">Rostral ant. cingulate (L)</option>
+                  <option value="rostralanteriorcingulate_rh">Rostral ant. cingulate (R)</option>
+                  <option value="rostralmiddlefrontal_lh">Rostral mid. frontal (L)</option>
+                  <option value="rostralmiddlefrontal_rh">Rostral mid. frontal (R)</option>
+                  <option value="superiorfrontal_lh">Superior frontal (L)</option>
+                  <option value="superiorfrontal_rh">Superior frontal (R)</option>
+                  <option value="superiorparietal_lh">Superior parietal (L)</option>
+                  <option value="superiorparietal_rh">Superior parietal (R)</option>
+                  <option value="superiortemporal_lh">Superior temporal (L)</option>
+                  <option value="superiortemporal_rh">Superior temporal (R)</option>
+                  <option value="supramarginal_lh">Supramarginal (L)</option>
+                  <option value="supramarginal_rh">Supramarginal (R)</option>
+                  <option value="frontalpole_lh">Frontal pole (L)</option>
+                  <option value="frontalpole_rh">Frontal pole (R)</option>
+                  <option value="temporalpole_lh">Temporal pole (L)</option>
+                  <option value="temporalpole_rh">Temporal pole (R)</option>
+                  <option value="transversetemporal_lh">Transverse temporal (L)</option>
+                  <option value="transversetemporal_rh">Transverse temporal (R)</option>
+                  <option value="insula_lh">Insula (L)</option>
+                  <option value="insula_rh">Insula (R)</option>
                 </select>
               </div>
             </div>
@@ -429,14 +481,12 @@
         </div>
       </div>
 
-      <!-- Image display -->
       <div class="columns is-centered">
         <div class="column is-10 has-text-centered">
           <figure class="image">
-            <img
-              id="traj-img"
-              src="static/images/trajectories/periodic_bankssts.png"
-              alt="Normative trajectory: periodic power, banks of superior temporal sulcus"
+            <img id="traj-img"
+              src="static/images/trajectories/bankssts_lh_delta_periodic.png"
+              alt="Normative trajectory"
               style="border-radius: 8px; max-width: 100%;"
               onerror="this.style.display='none'; document.getElementById('traj-placeholder').style.display='block';"
               onload="this.style.display='block'; document.getElementById('traj-placeholder').style.display='none';"
@@ -446,7 +496,7 @@
             </div>
           </figure>
           <p id="traj-caption" style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
-            Periodic power &mdash; Banks of superior temporal sulcus
+            Banks STS (L) &mdash; Periodic power &mdash; Delta
           </p>
         </div>
       </div>
@@ -464,17 +514,11 @@
         Warmer colors indicate positive deviations; cooler colors indicate negative deviations.
       </p>
 
-      <!-- Group toggle -->
       <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 1.5rem;">
-        <button id="btn-idiopathic" onclick="setGroup('idiopathic')" class="button is-info">
-          Idiopathic
-        </button>
-        <button id="btn-genetic" onclick="setGroup('genetic')" class="button is-light">
-          Genetic
-        </button>
+        <button id="btn-idiopathic" onclick="setGroup('idiopathic')" class="button is-info">Idiopathic</button>
+        <button id="btn-genetic" onclick="setGroup('genetic')" class="button is-light">Genetic</button>
       </div>
 
-      <!-- Feature dropdown -->
       <div class="columns is-centered" style="margin-bottom: 1.5rem;">
         <div class="column is-half">
           <div class="field">
@@ -493,12 +537,10 @@
         </div>
       </div>
 
-      <!-- Image display -->
       <div class="columns is-centered">
         <div class="column is-10 has-text-centered">
           <figure class="image">
-            <img
-              id="brainmap-img"
+            <img id="brainmap-img"
               src="static/images/brainmaps/idiopathic_periodic.png"
               alt="Brain map: idiopathic periodic power deviations"
               style="border-radius: 8px; max-width: 100%;"
@@ -559,55 +601,16 @@
 
   <script>
     var currentGroup = 'idiopathic';
+    var BAND_FEATURES = ['periodic', 'connectivity', 'entropy'];
 
-    var groupLabels = {
-      'idiopathic': 'Idiopathic conditions',
-      'genetic': 'Genetic variants'
-    };
-
+    var groupLabels = {'idiopathic': 'Idiopathic conditions', 'genetic': 'Genetic variants'};
     var featureLabels = {
-      'periodic': 'Periodic power',
-      'connectivity': 'Connectivity',
-      'entropy': 'Entropy',
+      'periodic': 'Periodic power', 'connectivity': 'Connectivity', 'entropy': 'Entropy',
+      'offset': 'Aperiodic offset', 'exponent': 'Aperiodic exponent',
+      'cf': 'Center frequency', 'peak_power': 'Peak power', 'broadband': 'Broadband power',
       'aperiodic': 'Aperiodic (offset & exponent)'
     };
-
-    var roiLabels = {
-      'bankssts': 'Banks of superior temporal sulcus',
-      'caudalanteriorcingulate': 'Caudal anterior cingulate',
-      'caudalmiddlefrontal': 'Caudal middle frontal',
-      'cuneus': 'Cuneus',
-      'entorhinal': 'Entorhinal',
-      'fusiform': 'Fusiform',
-      'inferiorparietal': 'Inferior parietal',
-      'inferiortemporal': 'Inferior temporal',
-      'isthmuscingulate': 'Isthmus cingulate',
-      'lateraloccipital': 'Lateral occipital',
-      'lateralorbitofrontal': 'Lateral orbitofrontal',
-      'lingual': 'Lingual',
-      'medialorbitofrontal': 'Medial orbitofrontal',
-      'middletemporal': 'Middle temporal',
-      'parahippocampal': 'Parahippocampal',
-      'paracentral': 'Paracentral',
-      'parsopercularis': 'Pars opercularis',
-      'parsorbitalis': 'Pars orbitalis',
-      'parstriangularis': 'Pars triangularis',
-      'pericalcarine': 'Pericalcarine',
-      'postcentral': 'Postcentral',
-      'posteriorcingulate': 'Posterior cingulate',
-      'precentral': 'Precentral',
-      'precuneus': 'Precuneus',
-      'rostralanteriorcingulate': 'Rostral anterior cingulate',
-      'rostralmiddlefrontal': 'Rostral middle frontal',
-      'superiorfrontal': 'Superior frontal',
-      'superiorparietal': 'Superior parietal',
-      'superiortemporal': 'Superior temporal',
-      'supramarginal': 'Supramarginal',
-      'frontalpole': 'Frontal pole',
-      'temporalpole': 'Temporal pole',
-      'transversetemporal': 'Transverse temporal',
-      'insula': 'Insula'
-    };
+    var bandLabels = {'delta': 'Delta', 'theta': 'Theta', 'alpha': 'Alpha', 'beta': 'Beta', 'gamma': 'Gamma'};
 
     function setGroup(group) {
       currentGroup = group;
@@ -630,15 +633,27 @@
 
     function updateTrajectory() {
       var feature = document.getElementById('traj-feature-select').value;
-      var roi = document.getElementById('traj-roi-select').value;
+      var roi     = document.getElementById('traj-roi-select').value;
+      var band    = document.getElementById('traj-band-select').value;
+      var hasBand = BAND_FEATURES.indexOf(feature) !== -1;
+
+      document.getElementById('band-control').style.opacity = hasBand ? '1' : '0.3';
+      document.getElementById('band-control').style.pointerEvents = hasBand ? 'auto' : 'none';
+
+      var filename = hasBand
+        ? roi + '_' + band + '_' + feature + '.png'
+        : roi + '_' + feature + '.png';
+
       var img = document.getElementById('traj-img');
       var placeholder = document.getElementById('traj-placeholder');
       img.style.display = 'none';
       placeholder.style.display = 'none';
-      img.src = 'static/images/trajectories/' + feature + '_' + roi + '.png';
-      img.alt = 'Normative trajectory: ' + featureLabels[feature] + ', ' + roiLabels[roi];
-      document.getElementById('traj-caption').innerHTML =
-        featureLabels[feature] + ' &mdash; ' + roiLabels[roi];
+      img.src = 'static/images/trajectories/' + filename;
+
+      var roiText = document.getElementById('traj-roi-select').options[document.getElementById('traj-roi-select').selectedIndex].text;
+      var caption = roiText + ' &mdash; ' + featureLabels[feature];
+      if (hasBand) caption += ' &mdash; ' + bandLabels[band];
+      document.getElementById('traj-caption').innerHTML = caption;
     }
   </script>
 
