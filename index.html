@@ -655,6 +655,7 @@
             <div class="control">
               <div class="select is-fullwidth">
                 <select id="stats-roi-select" onchange="filterStats()">
+                  <option value="mean" selected>Mean (brain-wide)</option>
                   <option value="all">All ROIs</option>
                 </select>
               </div>
@@ -737,7 +738,7 @@
             roiSelect.appendChild(opt);
           }
         });
-        renderStats(statsData);
+        filterStats();
       })
       .catch(function() {
         document.getElementById('stats-tbody').innerHTML =
@@ -790,7 +791,9 @@
       var filtered = statsData.filter(function(r) {
         var textMatch   = !query || (r[1] && r[1].toLowerCase().indexOf(query) !== -1);
         var familyMatch = family === 'all' || getStatsFeatureFamily(r[1]) === family;
-        var roiMatch    = roi === 'all' || getROIFromMarker(r[1]) === roi;
+        var roiMatch    = roi === 'all' ||
+                          (roi === 'mean' && getROIFromMarker(r[1]) === null) ||
+                          getROIFromMarker(r[1]) === roi;
         return textMatch && familyMatch && roiMatch;
       });
       renderStats(filtered);
