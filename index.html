@@ -629,10 +629,34 @@
         Shapiro-Wilk test assesses normality of residuals in the control group.
       </p>
 
-      <div class="field" style="margin-bottom: 1rem;">
-        <div class="control has-icons-left">
-          <input class="input" type="text" id="stats-search" placeholder="Search by marker (e.g. precentral_lh_alpha_periodic)" oninput="filterStats()">
-          <span class="icon is-left"><i class="fas fa-search"></i></span>
+      <div class="columns" style="margin-bottom: 0.5rem;">
+        <div class="column is-one-third">
+          <div class="field">
+            <label class="label">Feature family</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="stats-feature-select" onchange="filterStats()">
+                  <option value="all">All</option>
+                  <option value="periodic">Periodic power</option>
+                  <option value="connectivity">Connectivity</option>
+                  <option value="entropy">Entropy</option>
+                  <option value="aperiodic">Aperiodic (offset &amp; exponent)</option>
+                  <option value="cf">Center frequency</option>
+                  <option value="bw">Bandwidth</option>
+                  <option value="pw">Peak power</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="field">
+            <label class="label">Search</label>
+            <div class="control has-icons-left">
+              <input class="input" type="text" id="stats-search" placeholder="Search by marker (e.g. precentral_lh_alpha_periodic)" oninput="filterStats()">
+              <span class="icon is-left"><i class="fas fa-search"></i></span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -713,10 +737,26 @@
       tbody.innerHTML = html;
     }
 
+    function getStatsFeatureFamily(marker) {
+      if (!marker) return 'other';
+      var m = marker.toLowerCase();
+      if (m.indexOf('periodic') !== -1)    return 'periodic';
+      if (m.indexOf('connectivity') !== -1) return 'connectivity';
+      if (m.indexOf('entropy') !== -1)     return 'entropy';
+      if (m.indexOf('_offset') !== -1 || m.indexOf('_exponent') !== -1 || m.indexOf('knee_knee') !== -1) return 'aperiodic';
+      if (m.indexOf('_cf_') !== -1)        return 'cf';
+      if (m.indexOf('_bw_') !== -1)        return 'bw';
+      if (m.indexOf('_pw_') !== -1)        return 'pw';
+      return 'other';
+    }
+
     function filterStats() {
-      var query = document.getElementById('stats-search').value.toLowerCase();
+      var query  = document.getElementById('stats-search').value.toLowerCase();
+      var family = document.getElementById('stats-feature-select').value;
       var filtered = statsData.filter(function(r) {
-        return r[0] && r[0].toLowerCase().indexOf(query) !== -1;
+        var textMatch   = !query || (r[0] && r[0].toLowerCase().indexOf(query) !== -1);
+        var familyMatch = family === 'all' || getStatsFeatureFamily(r[0]) === family;
+        return textMatch && familyMatch;
       });
       renderStats(filtered);
     }
