@@ -722,13 +722,13 @@
         statsData = [];
         for (var i = 1; i < lines.length; i++) {
           var cols = lines[i].split(',');
-          if (cols.length >= 2 && cols[0].indexOf('knee') === -1) statsData.push(cols);
+          if (cols.length >= 2 && cols[1].indexOf('knee') === -1) statsData.push(cols);
         }
         // Populate ROI dropdown from data
         var roiSeen = {};
         var roiSelect = document.getElementById('stats-roi-select');
         statsData.forEach(function(r) {
-          var roi = getROIFromMarker(r[0]);
+          var roi = getROIFromMarker(r[1]);
           if (roi && !roiSeen[roi]) {
             roiSeen[roi] = true;
             var opt = document.createElement('option');
@@ -753,18 +753,18 @@
       var html = '';
       for (var i = 0; i < data.length; i++) {
         var r = data[i];
-        var shapiro_p = parseFloat(r[2]);
+        var shapiro_p = parseFloat(r[3]);
         var pStyle = shapiro_p < 0.05 ? 'color:#c0392b;font-weight:600;' : 'color:#27ae60;';
         html += '<tr>';
-        html += '<td style="font-family:monospace;font-size:0.78rem;">' + (r[0] || '') + '</td>';
-        html += '<td>' + (parseFloat(r[1]) ? parseFloat(r[1]).toFixed(3) : '') + '</td>';
+        html += '<td style="font-family:monospace;font-size:0.78rem;">' + (r[1] || '') + '</td>';
+        html += '<td>' + (parseFloat(r[2]) ? parseFloat(r[2]).toFixed(3) : '') + '</td>';
         html += '<td style="' + pStyle + '">' + (shapiro_p ? shapiro_p.toFixed(4) : '') + '</td>';
-        html += '<td>' + (parseFloat(r[3]) ? parseFloat(r[3]).toFixed(3) : '') + '</td>';
         html += '<td>' + (parseFloat(r[4]) ? parseFloat(r[4]).toFixed(3) : '') + '</td>';
-        html += '<td>' + (parseFloat(r[5]) ? parseFloat(r[5]).toFixed(1) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[5]) ? parseFloat(r[5]).toFixed(3) : '') + '</td>';
         html += '<td>' + (parseFloat(r[6]) ? parseFloat(r[6]).toFixed(1) : '') + '</td>';
-        html += '<td>' + (parseFloat(r[7]) ? parseFloat(r[7]).toFixed(4) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[7]) ? parseFloat(r[7]).toFixed(1) : '') + '</td>';
         html += '<td>' + (parseFloat(r[8]) ? parseFloat(r[8]).toFixed(4) : '') + '</td>';
+        html += '<td>' + (parseFloat(r[9]) ? parseFloat(r[9]).toFixed(4) : '') + '</td>';
         html += '</tr>';
       }
       tbody.innerHTML = html;
@@ -788,9 +788,9 @@
       var family = document.getElementById('stats-feature-select').value;
       var roi    = document.getElementById('stats-roi-select').value;
       var filtered = statsData.filter(function(r) {
-        var textMatch   = !query || (r[0] && r[0].toLowerCase().indexOf(query) !== -1);
-        var familyMatch = family === 'all' || getStatsFeatureFamily(r[0]) === family;
-        var roiMatch    = roi === 'all' || getROIFromMarker(r[0]) === roi;
+        var textMatch   = !query || (r[1] && r[1].toLowerCase().indexOf(query) !== -1);
+        var familyMatch = family === 'all' || getStatsFeatureFamily(r[1]) === family;
+        var roiMatch    = roi === 'all' || getROIFromMarker(r[1]) === roi;
         return textMatch && familyMatch && roiMatch;
       });
       renderStats(filtered);
@@ -804,8 +804,9 @@
         statsSortAsc = true;
       }
       var sorted = statsData.slice().sort(function(a, b) {
-        var av = isNaN(parseFloat(a[col])) ? a[col] : parseFloat(a[col]);
-        var bv = isNaN(parseFloat(b[col])) ? b[col] : parseFloat(b[col]);
+        var dc = col + 1; // r[0] is row number; data starts at r[1]
+        var av = isNaN(parseFloat(a[dc])) ? a[dc] : parseFloat(a[dc]);
+        var bv = isNaN(parseFloat(b[dc])) ? b[dc] : parseFloat(b[dc]);
         if (av < bv) return statsSortAsc ? -1 : 1;
         if (av > bv) return statsSortAsc ? 1 : -1;
         return 0;
