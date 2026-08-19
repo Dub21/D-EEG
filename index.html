@@ -630,7 +630,7 @@
       </p>
 
       <div class="columns" style="margin-bottom: 0.5rem;">
-        <div class="column is-one-third">
+        <div class="column is-narrow" style="min-width: 220px;">
           <div class="field">
             <label class="label">Feature family</label>
             <div class="control">
@@ -644,6 +644,18 @@
                   <option value="cf">Center frequency</option>
                   <option value="bw">Bandwidth</option>
                   <option value="pw">Peak power</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column is-narrow" style="min-width: 240px;">
+          <div class="field">
+            <label class="label">Region of interest</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="stats-roi-select" onchange="filterStats()">
+                  <option value="all">All ROIs</option>
                 </select>
               </div>
             </div>
@@ -694,16 +706,37 @@
     var statsSortCol = -1;
     var statsSortAsc = true;
 
+    function getROIFromMarker(marker) {
+      if (!marker) return null;
+      var lh = marker.indexOf('_lh_');
+      var rh = marker.indexOf('_rh_');
+      if (lh !== -1) return marker.substring(0, lh + 3);
+      if (rh !== -1) return marker.substring(0, rh + 3);
+      return null;
+    }
+
     fetch('static/data/stats/model_stats.csv')
       .then(function(r) { return r.text(); })
       .then(function(text) {
         var lines = text.trim().split('\n');
-        var headers = lines[0].split(',');
         statsData = [];
         for (var i = 1; i < lines.length; i++) {
           var cols = lines[i].split(',');
-          if (cols.length >= 2) statsData.push(cols);
+          if (cols.length >= 2 && cols[0].indexOf('knee') === -1) statsData.push(cols);
         }
+        // Populate ROI dropdown from data
+        var roiSeen = {};
+        var roiSelect = document.getElementById('stats-roi-select');
+        statsData.forEach(function(r) {
+          var roi = getROIFromMarker(r[0]);
+          if (roi && !roiSeen[roi]) {
+            roiSeen[roi] = true;
+            var opt = document.createElement('option');
+            opt.value = roi;
+            opt.text = roi;
+            roiSelect.appendChild(opt);
+          }
+        });
         renderStats(statsData);
       })
       .catch(function() {
@@ -753,10 +786,12 @@
     function filterStats() {
       var query  = document.getElementById('stats-search').value.toLowerCase();
       var family = document.getElementById('stats-feature-select').value;
+      var roi    = document.getElementById('stats-roi-select').value;
       var filtered = statsData.filter(function(r) {
         var textMatch   = !query || (r[0] && r[0].toLowerCase().indexOf(query) !== -1);
         var familyMatch = family === 'all' || getStatsFeatureFamily(r[0]) === family;
-        return textMatch && familyMatch;
+        var roiMatch    = roi === 'all' || getROIFromMarker(r[0]) === roi;
+        return textMatch && familyMatch && roiMatch;
       });
       renderStats(filtered);
     }
