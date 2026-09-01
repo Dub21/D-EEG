@@ -9,3 +9,10 @@ deeg-app/data/raw/
 *.parquet
 eeg_features*.csv
 features_results*
+df_features*.csv
+
+# Bruit
+.DS_Store
+__pycache__/
+*.pyc
+.claude/

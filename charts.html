@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -70,17 +70,17 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 </head>
 <body>
 <div class="wrap">
-  <h1>Trajectoires normatives EEG</h1>
-  <p class="sub">Courbes de centiles issues des modèles normatifs GAMLSS (famille SHASHo2)
-     ajustés sur les participants sans diagnostic. Sélectionnez une mesure et une région,
-     puis placez vos propres sujets sur la courbe.</p>
+  <h1>EEG normative trajectories</h1>
+  <p class="sub">Centile curves from GAMLSS normative models (SHASHo2 family) fitted on
+     participants with no diagnosis. Pick a measure and a region, then place your own
+     subjects on the curve.</p>
 
   <p class="note" id="units-note">
-     <b>Valeurs brutes acceptées</b> pour 1305 des 1312 mesures. Les constantes de
-     standardisation ont été reconstruites exactement à partir des modèles (résidu &lt; 10<sup>-14</sup>).
-     Sept mesures globales en sont dépourvues et n'acceptent que des valeurs déjà standardisées :
-     <code>exponent_mean</code>, <code>offset_mean</code> et les cinq <code>entropy_*_mean</code>.
-     <br><b>Vos données ne quittent pas votre navigateur</b> : tout le calcul est local, rien n'est envoyé.
+     <b>Raw values accepted</b> for 1305 of the 1312 measures. The standardisation constants
+     were recovered exactly from the fitted models (residual &lt; 10<sup>-14</sup>). Seven
+     whole-brain measures have none and accept already-standardised values only:
+     <code>exponent_mean</code>, <code>offset_mean</code> and the five <code>entropy_*_mean</code>.
+     <br><b>Your data never leaves your browser</b>: every computation runs locally, nothing is uploaded.
   </p>
 
   <div class="controls" id="controls"></div>
@@ -91,26 +91,26 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       <div id="tip"></div>
     </div>
     <div class="legend">
-      <span><i style="background:var(--band-outer)"></i>5–95<sup>e</sup> centile</span>
-      <span><i style="background:var(--band-inner)"></i>25–75<sup>e</sup> centile</span>
-      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>médiane</span>
-      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>vos sujets</span>
+      <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
+      <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
+      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
+      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
     </div>
     <div class="qc" id="qc"></div>
   </div>
 
   <div class="subj card" style="margin-top:20px">
-    <strong>Profil complet depuis un fichier</strong>
+    <strong>Full profile from a file</strong>
     <p class="sub" style="margin:6px 0 10px;font-size:13px">
-       CSV à deux colonnes, <code>marker,value</code>, une ligne par mesure, avec des valeurs
-       brutes. Les noms de mesures sont ceux du modèle (ex. <code>bankssts_lh_alpha_periodic</code>).
-       <a href="static/data/normative/norm_params.csv" download>Liste complète des mesures</a>.</p>
+       Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
+       are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
+       <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
     <div class="controls" style="margin-bottom:10px">
-      <div class="ctl"><label for="p-age">Âge (années)</label>
+      <div class="ctl"><label for="p-age">Age (years)</label>
         <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
-      <div class="ctl"><label for="p-sex">Sexe</label>
-        <select id="p-sex"><option value="m">Masculin</option><option value="f">Féminin</option></select></div>
-      <div class="ctl"><label for="p-file">Fichier</label>
+      <div class="ctl"><label for="p-sex">Sex</label>
+        <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+      <div class="ctl"><label for="p-file">File</label>
         <input id="p-file" type="file" accept=".csv,.txt"></div>
     </div>
     <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
@@ -118,14 +118,14 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
   </div>
 
   <div class="subj card" style="margin-top:20px">
-    <strong>Placer vos sujets</strong>
+    <strong>Place your own subjects</strong>
     <p class="sub" style="margin:6px 0 10px;font-size:13px">
-       Une ligne par sujet : <code>âge, sexe (M/F), valeur brute</code> pour la mesure
-       sélectionnée ci-dessus. Exemple : <code>12.4, F, 0.573</code></p>
+       One row per subject: <code>age, sex (M/F), raw value</code> for the measure selected
+       above. Example: <code>12.4, F, 0.573</code></p>
     <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
     <div>
-      <button id="go">Calculer</button>
-      <button id="clear" class="ghost">Effacer</button>
+      <button id="go">Compute</button>
+      <button id="clear" class="ghost">Clear</button>
     </div>
     <div id="out"></div>
   </div>
@@ -133,11 +133,11 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 
 <script>
 const DATA = "static/data/normative/";
-const LABEL = {periodic:"Puissance périodique", connectivity:"Connectivité (wPLI)",
-               entropy:"Entropie de permutation", exponent:"Exposant apériodique",
-               offset:"Offset apériodique"};
-const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Thêta 4–8 Hz", alpha:"Alpha 8–12 Hz",
-                 beta:"Bêta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Large bande"};
+const LABEL = {periodic:"Periodic power", connectivity:"Connectivity (wPLI)",
+               entropy:"Permutation entropy", exponent:"Aperiodic exponent",
+               offset:"Aperiodic offset"};
+const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8–12 Hz",
+                 beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
 let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null;
 
 /* ---- lois normales et SHASHo2 ---------------------------------------- */
@@ -170,10 +170,10 @@ function sel(id,label,opts,val){
     opts.map(o=>`<option value="${o[0]}"${o[0]===val?" selected":""}>${o[1]}</option>`).join("")+
     `</select></div>`;
 }
-const state={type:"periodic",band:"alpha",region:"Cerveau entier",hemi:"lh",sex:"m"};
+const state={type:"periodic",band:"alpha",region:"Whole brain",hemi:"lh",sex:"m"};
 
 function markerFor(){
-  const glob = state.region==="Cerveau entier";
+  const glob = state.region==="Whole brain";
   const m = MAN.models.find(x=>
     x.type===state.type &&
     (x.band===state.band || (state.type==="exponent"||state.type==="offset")) &&
@@ -182,14 +182,14 @@ function markerFor(){
 }
 function drawControls(){
   const types=[...new Set(MAN.models.map(m=>m.type))].sort();
-  const regions=["Cerveau entier",...MAN.regions];
+  const regions=["Whole brain",...MAN.regions];
   const noBand = state.type==="exponent"||state.type==="offset";
   document.getElementById("controls").innerHTML =
-    sel("f-type","Mesure",types.map(t=>[t,LABEL[t]||t]),state.type)+
-    (noBand?"":sel("f-band","Bande",MAN.bands.map(b=>[b,BANDLAB[b]||b]),state.band))+
-    sel("f-region","Région",regions.map(r=>[r,r]),state.region)+
-    (state.region==="Cerveau entier"?"":sel("f-hemi","Hémisphère",[["lh","Gauche"],["rh","Droit"]],state.hemi))+
-    sel("f-sex","Sexe",[["m","Masculin"],["f","Féminin"]],state.sex);
+    sel("f-type","Measure",types.map(t=>[t,LABEL[t]||t]),state.type)+
+    (noBand?"":sel("f-band","Band",MAN.bands.map(b=>[b,BANDLAB[b]||b]),state.band))+
+    sel("f-region","Region",regions.map(r=>[r,r]),state.region)+
+    (state.region==="Whole brain"?"":sel("f-hemi","Hemisphere",[["lh","Left"],["rh","Right"]],state.hemi))+
+    sel("f-sex","Sex",[["m","Male"],["f","Female"]],state.sex);
   const bind=(id,k)=>{const e=document.getElementById(id);
     if(e)e.onchange=()=>{state[k]=e.value;drawControls();load();};};
   bind("f-type","type");bind("f-band","band");bind("f-region","region");
@@ -200,19 +200,19 @@ function drawControls(){
 async function load(){
   const m=markerFor();
   const qc=document.getElementById("qc");
-  if(!m){CUR=null;qc.innerHTML="<span>Aucun modèle pour cette combinaison.</span>";render();return;}
+  if(!m){CUR=null;qc.innerHTML="<span>No model for this combination.</span>";render();return;}
   const j=await (await fetch(DATA+m.marker+".json")).json();
   CUR={...j,meta:m};
   const f=(v,d=2)=>v==null?"–":(+v).toFixed(d);
   qc.innerHTML=
-    `<span>modèle <b>${m.marker}</b></span>`+
-    `<span>n contrôles <b>${j.n}</b></span>`+
+    `<span>model <b>${m.marker}</b></span>`+
+    `<span>n controls <b>${j.n}</b></span>`+
     `<span>Shapiro p <b>${f(m.shapiro_p,3)}</b></span>`+
     `<span>SMSE <b>${f(m.smse)}</b></span>`+
     `<span>MSLL <b>${f(m.msll)}</b></span>`+
-    `<span>asymétrie <b>${f(m.skew)}</b></span>`+
-    `<span>aplatissement <b>${f(m.kurt)}</b></span>`+
-    (j.converged?"":`<span class="softnote">convergence non atteinte au plafond de 20 itérations (effet mesuré sur sigma : ~0,002 %)</span>`);
+    `<span>skewness <b>${f(m.skew)}</b></span>`+
+    `<span>kurtosis <b>${f(m.kurt)}</b></span>`+
+    (j.converged?"":`<span class="softnote">did not converge within the 20-iteration cap (measured effect on sigma: ~0.002%)</span>`);
   render();
 }
 
@@ -229,11 +229,11 @@ function render(){
   SUBJ.forEach(s=>{if(s.ok){lo=Math.min(lo,std_(s.value));hi=Math.max(hi,std_(s.value));}});
   const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
   const a0=ages[0], a1=ages[n-1];
-  const X=a=>M.l+(Math.log(a)-Math.log(a0))/(Math.log(a1)-Math.log(a0))*(W-M.l-M.r);
+  const X=a=>M.l+(a-a0)/(a1-a0)*(W-M.l-M.r);
   const Y=v=>H-M.b-(v-lo)/(hi-lo)*(H-M.t-M.b);
   const path=c=>c.map((v,i)=>(i?"L":"M")+X(ages[i]).toFixed(1)+" "+Y(v).toFixed(1)).join("");
   const area=(c1,c2)=>path(c1)+c2.map((v,i)=>{const k=n-1-i;return "L"+X(ages[k]).toFixed(1)+" "+Y(c2[k]).toFixed(1);}).join("")+"Z";
-  const ticks=[0.5,1,2,5,10,20,40,60].filter(t=>t>=a0&&t<=a1);
+  const ticks=[0,5,10,20,30,40,50,60,70].filter(t=>t>=a0&&t<=a1);
   const yt=[];const step=niceStep(hi-lo);
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step)yt.push(v);
   let s="";
@@ -244,8 +244,8 @@ function render(){
   s+=`<path d="${path(curves[2])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-linejoin="round"/>`;
   ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${H-M.b+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${t}</text>`;});
   s+=`<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1"/>`;
-  s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Âge (années, échelle log)</text>`;
-  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">Écarts-types (contrôles)</text>`;
+  s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Age (years)</text>`;
+  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">Standard deviations (controls)</text>`;
   SUBJ.forEach(p=>{if(!p.ok||p.sex!==state.sex)return;
     s+=`<circle cx="${X(p.age).toFixed(1)}" cy="${Y(std_(p.value)).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
   s+=`<line id="cross" x1="0" y1="${M.t}" x2="0" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
@@ -260,13 +260,13 @@ function hookHover(ages,curves,X,Y,a0,a1){
         cross=svg.querySelector("#cross"),hit=svg.querySelector("#hit");
   hit.onmousemove=e=>{
     const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*W;
-    const age=Math.exp(Math.log(a0)+(sx-M.l)/(W-M.l-M.r)*(Math.log(a1)-Math.log(a0)));
+    const age=a0+(sx-M.l)/(W-M.l-M.r)*(a1-a0);
     let i=0,best=1e9;ages.forEach((a,k)=>{const d=Math.abs(a-age);if(d<best){best=d;i=k;}});
     cross.setAttribute("x1",X(ages[i]));cross.setAttribute("x2",X(ages[i]));cross.setAttribute("opacity","1");
     tip.style.opacity=1;
-    tip.innerHTML=`<b>${ages[i].toFixed(1)} ans</b><br>95<sup>e</sup> ${curves[4][i].toFixed(2)}<br>`+
-      `75<sup>e</sup> ${curves[3][i].toFixed(2)}<br><b>médiane ${curves[2][i].toFixed(2)}</b><br>`+
-      `25<sup>e</sup> ${curves[1][i].toFixed(2)}<br>5<sup>e</sup> ${curves[0][i].toFixed(2)}`;
+    tip.innerHTML=`<b>${ages[i].toFixed(1)} yrs</b><br>95<sup>th</sup> ${curves[4][i].toFixed(2)}<br>`+
+      `75<sup>th</sup> ${curves[3][i].toFixed(2)}<br><b>median ${curves[2][i].toFixed(2)}</b><br>`+
+      `25<sup>th</sup> ${curves[1][i].toFixed(2)}<br>5<sup>th</sup> ${curves[0][i].toFixed(2)}`;
     const px=X(ages[i])/W*r.width, py=Y(curves[2][i])/H*r.height;
     tip.style.left=Math.min(r.width-150,px+14)+"px";tip.style.top=Math.max(0,py-60)+"px";
   };
@@ -288,7 +288,7 @@ function computeSubjects(){
   const out=document.getElementById("out");
   if(!CUR){out.innerHTML="";return;}
   const rows=SUBJ.map(s=>{
-    if(!s.ok)return `<tr><td>${s.line}</td><td colspan="5" class="flag">ligne illisible : ${s.raw}</td></tr>`;
+    if(!s.ok)return `<tr><td>${s.line}</td><td colspan="5" class="flag">unreadable row: ${s.raw}</td></tr>`;
     const g=CUR[s.sex],ages=CUR.age;
     const inRange=s.age>=ages[0]&&s.age<=ages[ages.length-1];
     let i=0;while(i<ages.length-2&&ages[i+1]<s.age)i++;
@@ -299,10 +299,10 @@ function computeSubjects(){
     const z=shashZ(v,mu,sg,CUR.nu,CUR.tau), c=pnorm(z)*100;
     return `<tr><td>${s.line}</td><td>${s.age}</td><td>${s.sex==="f"?"F":"M"}</td>`+
       `<td>${s.value}</td><td>${inRange?z.toFixed(2):"–"}</td><td>${inRange?c.toFixed(1):"–"}</td>`+
-      `<td>${inRange?"":'<span class="flag">hors plage d\'âge du modèle</span>'}`+
-      `${s.sex!==state.sex?'<span class="off">non tracé : sexe ≠ sélection</span>':''}</td></tr>`;
+      `<td>${inRange?"":'<span class="flag">outside the model\'s age range</span>'}`+
+      `${s.sex!==state.sex?'<span class="off">not plotted: sex ≠ selection</span>':''}</td></tr>`;
   }).join("");
-  out.innerHTML=rows?`<table><thead><tr><th>#</th><th>Âge</th><th>Sexe</th><th>Valeur</th>
+  out.innerHTML=rows?`<table><thead><tr><th>#</th><th>Age</th><th>Sex</th><th>Value</th>
     <th>z</th><th>Centile</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:"";
   render();
 }
@@ -322,7 +322,7 @@ async function loadNorm(){
 }
 async function loadBundle(setStatus){
   if(BUNDLE) return BUNDLE;
-  setStatus("Chargement des paramètres du modèle (5 Mo, une seule fois)…");
+  setStatus("Loading model parameters (5 MB, once per session)…");
   BUNDLE=await (await fetch(DATA+"profile_bundle.json")).json();
   return BUNDLE;
 }
@@ -338,7 +338,7 @@ async function runProfile(file){
   const st=t=>document.getElementById("p-status").innerHTML=t;
   const age=parseFloat(document.getElementById("p-age").value);
   const sex=document.getElementById("p-sex").value;
-  if(!isFinite(age)){st('<span class="flag">Renseignez l\'âge avant de déposer le fichier.</span>');return;}
+  if(!isFinite(age)){st('<span class="flag">Enter an age before choosing a file.</span>');return;}
   await loadNorm(); const B=(await loadBundle(st)).markers;
   const txt=await file.text();
   const lines=txt.trim().split(/\r?\n/).filter(Boolean);
@@ -360,28 +360,28 @@ async function runProfile(file){
     const z=shashZ(v,mu,sigma,rec.nu,rec.tau);
     res.push({marker,raw,z,centile:pnorm(z)*100});
   }
-  if(!res.length){st('<span class="flag">Aucune mesure exploitable dans ce fichier.</span>');
+  if(!res.length){st('<span class="flag">No usable measure in this file.</span>');
     document.getElementById("p-out").innerHTML="";return;}
   res.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
   const ext=res.filter(r=>Math.abs(r.z)>2).length;
-  st(`<b>${res.length}</b> mesures placées, dont <b>${ext}</b> au-delà de |z| = 2 `+
-     `(attendu chez un sujet typique : ${(res.length*0.0455).toFixed(0)}).`+
-     (unknown.length?` ${unknown.length} mesure(s) inconnue(s).`:"")+
-     (noConst.length?` ${noConst.length} sans constantes.`:"")+
-     (outOfRange.length?` ${outOfRange.length} hors plage d'âge.`:""));
+  st(`<b>${res.length}</b> measures placed, <b>${ext}</b> of them beyond |z| = 2 `+
+     `(expected in a typical subject: ${(res.length*0.0455).toFixed(0)}).`+
+     (unknown.length?` ${unknown.length} unknown measure(s).`:"")+
+     (noConst.length?` ${noConst.length} without constants.`:"")+
+     (outOfRange.length?` ${outOfRange.length} outside the age range.`:""));
   const rows=res.slice(0,25).map(r=>`<tr><td>${r.marker}</td><td>${r.raw}</td>`+
      `<td>${r.z.toFixed(2)}</td><td>${r.centile.toFixed(1)}</td></tr>`).join("");
   document.getElementById("p-out").innerHTML=
-    `<table><thead><tr><th>Mesure</th><th>Valeur</th><th>z</th><th>Centile</th></tr></thead>`+
+    `<table><thead><tr><th>Measure</th><th>Value</th><th>z</th><th>Centile</th></tr></thead>`+
     `<tbody>${rows}</tbody></table>`+
-    `<p class="sub" style="font-size:12px;margin-top:8px">25 plus fortes déviations sur ${res.length}.</p>`+
-    `<button id="p-dl">Télécharger le profil complet (CSV)</button>`;
+    `<p class="sub" style="font-size:12px;margin-top:8px">25 largest deviations out of ${res.length}.</p>`+
+    `<button id="p-dl">Download full profile (CSV)</button>`;
   document.getElementById("p-dl").onclick=()=>{
     const csv="marker,value,z,centile\n"+res.map(r=>
       `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)}`).join("\n");
     const a=document.createElement("a");
     a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-    a.download="profil_deeg.csv"; a.click(); URL.revokeObjectURL(a.href);
+    a.download="deeg_profile.csv"; a.click(); URL.revokeObjectURL(a.href);
   };
 }
 document.getElementById("p-file").onchange=e=>{
