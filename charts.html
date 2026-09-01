@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D-EEG Charts</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface-1:#fcfcfb; --page:#f9f9f7;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --band-outer:#cde2fb; --band-inner:#9ec5f4; --median:#1c5cab;
+  --subject:#eb6834; --good:#0ca30c; --warn:#fab219; --critical:#d03b3b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface-1:#1a1a19; --page:#0d0d0d;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --band-outer:#184f95; --band-inner:#256abf; --median:#86b6ef;
+    --subject:#d95926; --critical:#d03b3b;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);
+     font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--ink-2);margin:0 0 20px;max-width:70ch}
+.note{background:var(--surface-1);border:1px solid var(--border);border-left:3px solid var(--warn);
+      border-radius:6px;padding:10px 14px;margin:0 0 20px;color:var(--ink-2);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl label{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+input[type=number],input[type=file]{font:inherit;padding:6px 8px;border:1px solid var(--border);
+       border-radius:6px;background:var(--surface-1);color:var(--ink);min-width:150px}
+select{font:inherit;padding:6px 8px;border:1px solid var(--border);border-radius:6px;
+       background:var(--surface-1);color:var(--ink);min-width:150px}
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:16px}
+.chartwrap{position:relative;overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:560px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:10px;
+        font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.qc{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;padding-top:12px;
+    border-top:1px solid var(--grid);font-size:12px;color:var(--ink-2)}
+.qc b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+#tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .08s;
+     background:var(--surface-1);border:1px solid var(--border);border-radius:6px;
+     padding:8px 10px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.10);
+     font-variant-numeric:tabular-nums;white-space:nowrap;z-index:5}
+#tip b{color:var(--ink)}
+.subj{margin-top:24px}
+textarea{width:100%;min-height:92px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+         padding:10px;border:1px solid var(--border);border-radius:6px;
+         background:var(--surface-1);color:var(--ink);resize:vertical}
+button{font:inherit;padding:7px 14px;border:1px solid var(--border);border-radius:6px;
+       background:var(--median);color:var(--surface-1);cursor:pointer;margin-top:8px}
+button.ghost{background:transparent;color:var(--ink-2)}
+table{border-collapse:collapse;width:100%;margin-top:14px;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--grid)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.flag{color:var(--critical);font-weight:600}
+.softnote{color:var(--ink-2)}
+.off{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trajectoires normatives EEG</h1>
+  <p class="sub">Courbes de centiles issues des modèles normatifs GAMLSS (famille SHASHo2)
+     ajustés sur les participants sans diagnostic. Sélectionnez une mesure et une région,
+     puis placez vos propres sujets sur la courbe.</p>
+
+  <p class="note" id="units-note">
+     <b>Valeurs brutes acceptées</b> pour 1305 des 1312 mesures. Les constantes de
+     standardisation ont été reconstruites exactement à partir des modèles (résidu &lt; 10<sup>-14</sup>).
+     Sept mesures globales en sont dépourvues et n'acceptent que des valeurs déjà standardisées :
+     <code>exponent_mean</code>, <code>offset_mean</code> et les cinq <code>entropy_*_mean</code>.
+     <br><b>Vos données ne quittent pas votre navigateur</b> : tout le calcul est local, rien n'est envoyé.
+  </p>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="card">
+    <div class="chartwrap">
+      <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
+      <div id="tip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--band-outer)"></i>5–95<sup>e</sup> centile</span>
+      <span><i style="background:var(--band-inner)"></i>25–75<sup>e</sup> centile</span>
+      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>médiane</span>
+      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>vos sujets</span>
+    </div>
+    <div class="qc" id="qc"></div>
+  </div>
+
+  <div class="subj card" style="margin-top:20px">
+    <strong>Profil complet depuis un fichier</strong>
+    <p class="sub" style="margin:6px 0 10px;font-size:13px">
+       CSV à deux colonnes, <code>marker,value</code>, une ligne par mesure, avec des valeurs
+       brutes. Les noms de mesures sont ceux du modèle (ex. <code>bankssts_lh_alpha_periodic</code>).
+       <a href="static/data/normative/norm_params.csv" download>Liste complète des mesures</a>.</p>
+    <div class="controls" style="margin-bottom:10px">
+      <div class="ctl"><label for="p-age">Âge (années)</label>
+        <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
+      <div class="ctl"><label for="p-sex">Sexe</label>
+        <select id="p-sex"><option value="m">Masculin</option><option value="f">Féminin</option></select></div>
+      <div class="ctl"><label for="p-file">Fichier</label>
+        <input id="p-file" type="file" accept=".csv,.txt"></div>
+    </div>
+    <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
+    <div id="p-out"></div>
+  </div>
+
+  <div class="subj card" style="margin-top:20px">
+    <strong>Placer vos sujets</strong>
+    <p class="sub" style="margin:6px 0 10px;font-size:13px">
+       Une ligne par sujet : <code>âge, sexe (M/F), valeur brute</code> pour la mesure
+       sélectionnée ci-dessus. Exemple : <code>12.4, F, 0.573</code></p>
+    <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
+    <div>
+      <button id="go">Calculer</button>
+      <button id="clear" class="ghost">Effacer</button>
+    </div>
+    <div id="out"></div>
+  </div>
+</div>
+
+<script>
+const DATA = "static/data/normative/";
+const LABEL = {periodic:"Puissance périodique", connectivity:"Connectivité (wPLI)",
+               entropy:"Entropie de permutation", exponent:"Exposant apériodique",
+               offset:"Offset apériodique"};
+const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Thêta 4–8 Hz", alpha:"Alpha 8–12 Hz",
+                 beta:"Bêta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Large bande"};
+let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null;
+
+/* ---- lois normales et SHASHo2 ---------------------------------------- */
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);
+  const a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;
+  const t=1/(1+p*x), y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return s*y;}
+const pnorm=z=>0.5*(1+erf(z/Math.SQRT2));
+function qnorm(p){ // Acklam
+  if(p<=0)return -Infinity; if(p>=1)return Infinity;
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00],
+        b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01],
+        c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00],
+        d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const pl=0.02425;let q,r;
+  if(p<pl){q=Math.sqrt(-2*Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p>1-pl){q=Math.sqrt(-2*Math.log(1-p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  q=p-0.5;r=q*q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+// z centré-réduit d'une valeur : r = sinh(tau*asinh((y-mu)/(sigma*tau)) - nu)
+const shashZ=(y,mu,sg,nu,tau)=>Math.sinh(tau*Math.asinh((y-mu)/(sg*tau))-nu);
+// quantile : y = mu + sigma*tau*sinh((asinh(r)+nu)/tau)
+const shashQ=(p,mu,sg,nu,tau)=>mu+sg*tau*Math.sinh((Math.asinh(qnorm(p))+nu)/tau);
+
+/* ---- contrôles -------------------------------------------------------- */
+function sel(id,label,opts,val){
+  return `<div class="ctl"><label for="${id}">${label}</label><select id="${id}">`+
+    opts.map(o=>`<option value="${o[0]}"${o[0]===val?" selected":""}>${o[1]}</option>`).join("")+
+    `</select></div>`;
+}
+const state={type:"periodic",band:"alpha",region:"Cerveau entier",hemi:"lh",sex:"m"};
+
+function markerFor(){
+  const glob = state.region==="Cerveau entier";
+  const m = MAN.models.find(x=>
+    x.type===state.type &&
+    (x.band===state.band || (state.type==="exponent"||state.type==="offset")) &&
+    (glob ? x.scope==="global" : (x.region===state.region && x.hemi===state.hemi)));
+  return m||null;
+}
+function drawControls(){
+  const types=[...new Set(MAN.models.map(m=>m.type))].sort();
+  const regions=["Cerveau entier",...MAN.regions];
+  const noBand = state.type==="exponent"||state.type==="offset";
+  document.getElementById("controls").innerHTML =
+    sel("f-type","Mesure",types.map(t=>[t,LABEL[t]||t]),state.type)+
+    (noBand?"":sel("f-band","Bande",MAN.bands.map(b=>[b,BANDLAB[b]||b]),state.band))+
+    sel("f-region","Région",regions.map(r=>[r,r]),state.region)+
+    (state.region==="Cerveau entier"?"":sel("f-hemi","Hémisphère",[["lh","Gauche"],["rh","Droit"]],state.hemi))+
+    sel("f-sex","Sexe",[["m","Masculin"],["f","Féminin"]],state.sex);
+  const bind=(id,k)=>{const e=document.getElementById(id);
+    if(e)e.onchange=()=>{state[k]=e.value;drawControls();load();};};
+  bind("f-type","type");bind("f-band","band");bind("f-region","region");
+  bind("f-hemi","hemi");bind("f-sex","sex");
+}
+
+/* ---- chargement + rendu ---------------------------------------------- */
+async function load(){
+  const m=markerFor();
+  const qc=document.getElementById("qc");
+  if(!m){CUR=null;qc.innerHTML="<span>Aucun modèle pour cette combinaison.</span>";render();return;}
+  const j=await (await fetch(DATA+m.marker+".json")).json();
+  CUR={...j,meta:m};
+  const f=(v,d=2)=>v==null?"–":(+v).toFixed(d);
+  qc.innerHTML=
+    `<span>modèle <b>${m.marker}</b></span>`+
+    `<span>n contrôles <b>${j.n}</b></span>`+
+    `<span>Shapiro p <b>${f(m.shapiro_p,3)}</b></span>`+
+    `<span>SMSE <b>${f(m.smse)}</b></span>`+
+    `<span>MSLL <b>${f(m.msll)}</b></span>`+
+    `<span>asymétrie <b>${f(m.skew)}</b></span>`+
+    `<span>aplatissement <b>${f(m.kurt)}</b></span>`+
+    (j.converged?"":`<span class="softnote">convergence non atteinte au plafond de 20 itérations (effet mesuré sur sigma : ~0,002 %)</span>`);
+  render();
+}
+
+const W=860,H=460,M={t:18,r:18,b:44,l:56};
+function render(){
+  const svg=document.getElementById("chart");
+  if(!CUR){svg.innerHTML="";return;}
+  const g=CUR[state.sex], ages=CUR.age, n=ages.length;
+  const P=[0.05,0.25,0.5,0.75,0.95];
+  const curves=P.map(p=>ages.map((_,i)=>shashQ(p,g.mu[i],g.sigma[i],CUR.nu,CUR.tau)));
+  let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
+  const npc=NORM&&NORM[CUR.marker];
+  const std_=v=>npc?(v-npc.mean)/npc.std:v;
+  SUBJ.forEach(s=>{if(s.ok){lo=Math.min(lo,std_(s.value));hi=Math.max(hi,std_(s.value));}});
+  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
+  const a0=ages[0], a1=ages[n-1];
+  const X=a=>M.l+(Math.log(a)-Math.log(a0))/(Math.log(a1)-Math.log(a0))*(W-M.l-M.r);
+  const Y=v=>H-M.b-(v-lo)/(hi-lo)*(H-M.t-M.b);
+  const path=c=>c.map((v,i)=>(i?"L":"M")+X(ages[i]).toFixed(1)+" "+Y(v).toFixed(1)).join("");
+  const area=(c1,c2)=>path(c1)+c2.map((v,i)=>{const k=n-1-i;return "L"+X(ages[k]).toFixed(1)+" "+Y(c2[k]).toFixed(1);}).join("")+"Z";
+  const ticks=[0.5,1,2,5,10,20,40,60].filter(t=>t>=a0&&t<=a1);
+  const yt=[];const step=niceStep(hi-lo);
+  for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step)yt.push(v);
+  let s="";
+  yt.forEach(v=>{s+=`<line x1="${M.l}" y1="${Y(v).toFixed(1)}" x2="${W-M.r}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`+
+    `<text x="${M.l-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${(+v.toFixed(2))}</text>`;});
+  s+=`<path d="${area(curves[0],curves[4])}" fill="var(--band-outer)" opacity="0.55"/>`;
+  s+=`<path d="${area(curves[1],curves[3])}" fill="var(--band-inner)" opacity="0.55"/>`;
+  s+=`<path d="${path(curves[2])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-linejoin="round"/>`;
+  ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${H-M.b+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${t}</text>`;});
+  s+=`<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1"/>`;
+  s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Âge (années, échelle log)</text>`;
+  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">Écarts-types (contrôles)</text>`;
+  SUBJ.forEach(p=>{if(!p.ok||p.sex!==state.sex)return;
+    s+=`<circle cx="${X(p.age).toFixed(1)}" cy="${Y(std_(p.value)).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
+  s+=`<line id="cross" x1="0" y1="${M.t}" x2="0" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
+  s+=`<rect x="${M.l}" y="${M.t}" width="${W-M.l-M.r}" height="${H-M.t-M.b}" fill="transparent" id="hit"/>`;
+  svg.innerHTML=s;
+  hookHover(ages,curves,X,Y,a0,a1);
+}
+function niceStep(range){const raw=range/6,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;
+  return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+function hookHover(ages,curves,X,Y,a0,a1){
+  const svg=document.getElementById("chart"),tip=document.getElementById("tip"),
+        cross=svg.querySelector("#cross"),hit=svg.querySelector("#hit");
+  hit.onmousemove=e=>{
+    const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*W;
+    const age=Math.exp(Math.log(a0)+(sx-M.l)/(W-M.l-M.r)*(Math.log(a1)-Math.log(a0)));
+    let i=0,best=1e9;ages.forEach((a,k)=>{const d=Math.abs(a-age);if(d<best){best=d;i=k;}});
+    cross.setAttribute("x1",X(ages[i]));cross.setAttribute("x2",X(ages[i]));cross.setAttribute("opacity","1");
+    tip.style.opacity=1;
+    tip.innerHTML=`<b>${ages[i].toFixed(1)} ans</b><br>95<sup>e</sup> ${curves[4][i].toFixed(2)}<br>`+
+      `75<sup>e</sup> ${curves[3][i].toFixed(2)}<br><b>médiane ${curves[2][i].toFixed(2)}</b><br>`+
+      `25<sup>e</sup> ${curves[1][i].toFixed(2)}<br>5<sup>e</sup> ${curves[0][i].toFixed(2)}`;
+    const px=X(ages[i])/W*r.width, py=Y(curves[2][i])/H*r.height;
+    tip.style.left=Math.min(r.width-150,px+14)+"px";tip.style.top=Math.max(0,py-60)+"px";
+  };
+  hit.onmouseleave=()=>{tip.style.opacity=0;cross.setAttribute("opacity","0");};
+}
+
+/* ---- sujets ----------------------------------------------------------- */
+function parseSubjects(){
+  const lines=document.getElementById("input").value.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  SUBJ=lines.map((l,i)=>{
+    const p=l.split(/[,;\t]/).map(x=>x.trim());
+    const age=parseFloat(p[0]), sx=(p[1]||"").toLowerCase().startsWith("f")?"f":"m", v=parseFloat(p[2]);
+    const ok=isFinite(age)&&isFinite(v);
+    return {line:i+1,age,sex:sx,value:v,ok,raw:l};
+  });
+}
+function computeSubjects(){
+  parseSubjects();
+  const out=document.getElementById("out");
+  if(!CUR){out.innerHTML="";return;}
+  const rows=SUBJ.map(s=>{
+    if(!s.ok)return `<tr><td>${s.line}</td><td colspan="5" class="flag">ligne illisible : ${s.raw}</td></tr>`;
+    const g=CUR[s.sex],ages=CUR.age;
+    const inRange=s.age>=ages[0]&&s.age<=ages[ages.length-1];
+    let i=0;while(i<ages.length-2&&ages[i+1]<s.age)i++;
+    const t=(s.age-ages[i])/(ages[i+1]-ages[i]);
+    const mu=g.mu[i]+t*(g.mu[i+1]-g.mu[i]), sg=g.sigma[i]+t*(g.sigma[i+1]-g.sigma[i]);
+    const np=NORM&&NORM[CUR.marker];
+    const v=np?(s.value-np.mean)/np.std:s.value;      // brut -> standardisé si constantes dispo
+    const z=shashZ(v,mu,sg,CUR.nu,CUR.tau), c=pnorm(z)*100;
+    return `<tr><td>${s.line}</td><td>${s.age}</td><td>${s.sex==="f"?"F":"M"}</td>`+
+      `<td>${s.value}</td><td>${inRange?z.toFixed(2):"–"}</td><td>${inRange?c.toFixed(1):"–"}</td>`+
+      `<td>${inRange?"":'<span class="flag">hors plage d\'âge du modèle</span>'}`+
+      `${s.sex!==state.sex?'<span class="off">non tracé : sexe ≠ sélection</span>':''}</td></tr>`;
+  }).join("");
+  out.innerHTML=rows?`<table><thead><tr><th>#</th><th>Âge</th><th>Sexe</th><th>Valeur</th>
+    <th>z</th><th>Centile</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:"";
+  render();
+}
+document.getElementById("go").onclick=computeSubjects;
+document.getElementById("clear").onclick=()=>{document.getElementById("input").value="";
+  SUBJ=[];document.getElementById("out").innerHTML="";render();};
+
+async function loadNorm(){
+  if(NORM) return NORM;
+  const txt=await (await fetch(DATA+"norm_params.csv")).text();
+  const lines=txt.trim().split(/\r?\n/); const head=lines[0].split(",");
+  const iM=head.indexOf("marker"), iA=head.indexOf("mean"), iS=head.indexOf("std");
+  NORM={};
+  for(let k=1;k<lines.length;k++){const c=lines[k].split(",");
+    NORM[c[iM]]={mean:+c[iA], std:+c[iS]};}
+  return NORM;
+}
+async function loadBundle(setStatus){
+  if(BUNDLE) return BUNDLE;
+  setStatus("Chargement des paramètres du modèle (5 Mo, une seule fois)…");
+  BUNDLE=await (await fetch(DATA+"profile_bundle.json")).json();
+  return BUNDLE;
+}
+function paramsAt(rec, age, sex){
+  const n=rec.n||120, a0=rec.a0, a1=rec.a1;
+  const t=(Math.log(age)-Math.log(a0))/(Math.log(a1)-Math.log(a0))*(n-1);
+  const i=Math.max(0,Math.min(n-2,Math.floor(t))), f=t-i;
+  const arr=rec[sex];
+  return {mu:arr[0][i]+f*(arr[0][i+1]-arr[0][i]),
+          sigma:arr[1][i]+f*(arr[1][i+1]-arr[1][i])};
+}
+async function runProfile(file){
+  const st=t=>document.getElementById("p-status").innerHTML=t;
+  const age=parseFloat(document.getElementById("p-age").value);
+  const sex=document.getElementById("p-sex").value;
+  if(!isFinite(age)){st('<span class="flag">Renseignez l\'âge avant de déposer le fichier.</span>');return;}
+  await loadNorm(); const B=(await loadBundle(st)).markers;
+  const txt=await file.text();
+  const lines=txt.trim().split(/\r?\n/).filter(Boolean);
+  let head=lines[0].split(/[,;\t]/).map(x=>x.trim().toLowerCase());
+  let iM=head.indexOf("marker"), iV=head.indexOf("value"), start=1;
+  if(iM<0||iV<0){iM=0;iV=1;start=0;}                       // sans en-tête : 2 colonnes
+  const res=[], unknown=[], noConst=[], outOfRange=[];
+  for(let k=start;k<lines.length;k++){
+    const c=lines[k].split(/[,;\t]/).map(x=>x.trim());
+    const marker=c[iM], raw=parseFloat(c[iV]);
+    if(!marker||!isFinite(raw)) continue;
+    const rec=B[marker];
+    if(!rec){unknown.push(marker);continue;}
+    const np=NORM[marker];
+    if(!np){noConst.push(marker);continue;}
+    if(age<rec.a0||age>rec.a1){outOfRange.push(marker);continue;}
+    const {mu,sigma}=paramsAt(rec,age,sex);
+    const v=(raw-np.mean)/np.std;
+    const z=shashZ(v,mu,sigma,rec.nu,rec.tau);
+    res.push({marker,raw,z,centile:pnorm(z)*100});
+  }
+  if(!res.length){st('<span class="flag">Aucune mesure exploitable dans ce fichier.</span>');
+    document.getElementById("p-out").innerHTML="";return;}
+  res.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
+  const ext=res.filter(r=>Math.abs(r.z)>2).length;
+  st(`<b>${res.length}</b> mesures placées, dont <b>${ext}</b> au-delà de |z| = 2 `+
+     `(attendu chez un sujet typique : ${(res.length*0.0455).toFixed(0)}).`+
+     (unknown.length?` ${unknown.length} mesure(s) inconnue(s).`:"")+
+     (noConst.length?` ${noConst.length} sans constantes.`:"")+
+     (outOfRange.length?` ${outOfRange.length} hors plage d'âge.`:""));
+  const rows=res.slice(0,25).map(r=>`<tr><td>${r.marker}</td><td>${r.raw}</td>`+
+     `<td>${r.z.toFixed(2)}</td><td>${r.centile.toFixed(1)}</td></tr>`).join("");
+  document.getElementById("p-out").innerHTML=
+    `<table><thead><tr><th>Mesure</th><th>Valeur</th><th>z</th><th>Centile</th></tr></thead>`+
+    `<tbody>${rows}</tbody></table>`+
+    `<p class="sub" style="font-size:12px;margin-top:8px">25 plus fortes déviations sur ${res.length}.</p>`+
+    `<button id="p-dl">Télécharger le profil complet (CSV)</button>`;
+  document.getElementById("p-dl").onclick=()=>{
+    const csv="marker,value,z,centile\n"+res.map(r=>
+      `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)}`).join("\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+    a.download="profil_deeg.csv"; a.click(); URL.revokeObjectURL(a.href);
+  };
+}
+document.getElementById("p-file").onchange=e=>{
+  if(e.target.files[0]) runProfile(e.target.files[0]);
+};
+
+(async function init(){
+  MAN=await (await fetch(DATA+"manifest.json")).json();
+  loadNorm();
+  drawControls();await load();
+})();
+</script>
+</body>
+</html>

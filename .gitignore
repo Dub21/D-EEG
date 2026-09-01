@@ -1,0 +1,11 @@
+# Données de participants — ne JAMAIS committer.
+# Les objets gamlss (.rds) embarquent y, la matrice de design (âge, sexe, site
+# par participant) et les résidus : ce sont des données individuelles.
+*.rds
+*.RDS
+models/
+deeg-app/models/
+deeg-app/data/raw/
+*.parquet
+eeg_features*.csv
+features_results*
