@@ -72,14 +72,14 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 <div class="wrap">
   <h1>EEG normative trajectories</h1>
   <p class="sub">Centile curves from GAMLSS normative models (SHASHo2 family) fitted on
-     participants with no diagnosis. Pick a measure and a region, then place your own
-     subjects on the curve.</p>
+     participants with no diagnosis, with acquisition site as a random intercept.
+     Pick a measure, then place your own subjects on the curve.</p>
 
   <p class="note" id="units-note">
-     <b>Raw values accepted</b> for 1305 of the 1312 measures. The standardisation constants
-     were recovered exactly from the fitted models (residual &lt; 10<sup>-14</sup>). Seven
-     whole-brain measures have none and accept already-standardised values only:
-     <code>exponent_mean</code>, <code>offset_mean</code> and the five <code>entropy_*_mean</code>.
+     <b>Raw values accepted</b> for the measures listed in
+     <code>norm_params.csv</code>; the others accept already-standardised values only.
+     Standardisation centres on the median of the control values and scales by their
+     standard deviation.
      <br><b>Your data never leaves your browser</b>: every computation runs locally, nothing is uploaded.
   </p>
 
@@ -135,7 +135,9 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 const DATA = "static/data/normative/";
 const LABEL = {periodic:"Periodic power", connectivity:"Connectivity (wPLI)",
                entropy:"Permutation entropy", exponent:"Aperiodic exponent",
-               offset:"Aperiodic offset"};
+               offset:"Aperiodic offset", psd:"Power spectral density",
+               cf_alpha:"Alpha centre frequency", pw_alpha:"Alpha peak power",
+               bw_alpha:"Alpha bandwidth"};
 const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8–12 Hz",
                  beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
 let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null;
@@ -172,22 +174,29 @@ function sel(id,label,opts,val){
 }
 const state={type:"periodic",band:"alpha",region:"Whole brain",hemi:"lh",sex:"m"};
 
+function hasBand(t){ return MAN.models.some(x=>x.type===t && x.band); }
+function bandsFor(t){
+  return MAN.bands.filter(b=>MAN.models.some(x=>x.type===t && x.band===b));
+}
 function markerFor(){
   const glob = state.region==="Whole brain";
+  const nb = !hasBand(state.type);
   const m = MAN.models.find(x=>
     x.type===state.type &&
-    (x.band===state.band || (state.type==="exponent"||state.type==="offset")) &&
+    (nb || x.band===state.band) &&
     (glob ? x.scope==="global" : (x.region===state.region && x.hemi===state.hemi)));
   return m||null;
 }
 function drawControls(){
   const types=[...new Set(MAN.models.map(m=>m.type))].sort();
   const regions=["Whole brain",...MAN.regions];
-  const noBand = state.type==="exponent"||state.type==="offset";
+  const bs = bandsFor(state.type);
+  const noBand = bs.length===0;
+  if(!noBand && !bs.includes(state.band)) state.band = bs[0];
   document.getElementById("controls").innerHTML =
     sel("f-type","Measure",types.map(t=>[t,LABEL[t]||t]),state.type)+
-    (noBand?"":sel("f-band","Band",MAN.bands.map(b=>[b,BANDLAB[b]||b]),state.band))+
-    sel("f-region","Region",regions.map(r=>[r,r]),state.region)+
+    (noBand?"":sel("f-band","Band",bs.map(b=>[b,BANDLAB[b]||b]),state.band))+
+    (MAN.regions.length?sel("f-region","Region",regions.map(r=>[r,r]),state.region):"")+
     (state.region==="Whole brain"?"":sel("f-hemi","Hemisphere",[["lh","Left"],["rh","Right"]],state.hemi))+
     sel("f-sex","Sex",[["m","Male"],["f","Female"]],state.sex);
   const bind=(id,k)=>{const e=document.getElementById(id);
@@ -212,7 +221,7 @@ async function load(){
     `<span>MSLL <b>${f(m.msll)}</b></span>`+
     `<span>skewness <b>${f(m.skew)}</b></span>`+
     `<span>kurtosis <b>${f(m.kurt)}</b></span>`+
-    (j.converged?"":`<span class="softnote">did not converge within the 20-iteration cap (measured effect on sigma: ~0.002%)</span>`);
+    (j.converged?"":`<span class="softnote">did not converge within the iteration cap</span>`);
   render();
 }
 
@@ -322,7 +331,7 @@ async function loadNorm(){
 }
 async function loadBundle(setStatus){
   if(BUNDLE) return BUNDLE;
-  setStatus("Loading model parameters (5 MB, once per session)…");
+  setStatus("Loading model parameters (once per session)…");
   BUNDLE=await (await fetch(DATA+"profile_bundle.json")).json();
   return BUNDLE;
 }
