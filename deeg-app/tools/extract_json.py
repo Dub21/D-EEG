@@ -187,6 +187,11 @@ def one(f):
                 m0  = site_mean(t["coef"], t["site_cols"])
                 off = {c[len(pfx):]: cf(t["coef"], c) - m0 for c in t["site_cols"]}
             out[lab] = {k: round(v, 5) for k, v in sorted(off.items())}
+            if par == "mu":
+                vals = list(off.values())
+                # ecart-type entre sites : sert au retrecissement lors d'un
+                # recalibrage sur des controles locaux
+                out["site_sd"] = round(float(np.std(vals, ddof=1)), 5) if len(vals) > 1 else 0.0
 
         with open(dst, "w") as fh:
             json.dump(out, fh, separators=(",", ":"))

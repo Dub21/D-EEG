@@ -40,7 +40,8 @@ def main():
         a0, a1 = float(age[0]), float(age[-1])
         grid = np.exp(np.linspace(np.log(a0), np.log(a1), NAGE))
         rec = {"a0": round(a0, 4), "a1": round(a1, 4),
-               "nu": d["nu"], "tau": d["tau"]}
+               "nu": d["nu"], "tau": d["tau"],
+               "site_sd": d.get("site_sd", 0.0)}
         for sex in ("m", "f"):
             mu = np.interp(grid, age, np.asarray(d[sex]["mu"], float))
             sg = np.interp(grid, age, np.asarray(d[sex]["sigma"], float))

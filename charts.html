@@ -100,6 +100,26 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
   </div>
 
   <div class="subj card" style="margin-top:20px">
+    <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
+    <p class="sub" style="margin:6px 0 10px;font-size:13px">
+       The published curves are those of the average training site. Sites differ, so a
+       recording from a new site carries an unknown offset. Upload controls from your own
+       site and the page estimates that offset and shifts the curves accordingly.
+       <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
+       per measure. The estimate is shrunk toward zero when few controls are available, so
+       a small sample moves the curves little rather than moving them wrongly.
+       Bethlehem et al. recommend at least 100 controls for this step.</p>
+    <div class="controls" style="margin-bottom:10px">
+      <div class="ctl"><label for="c-file">Controls file</label>
+        <input id="c-file" type="file" accept=".csv,.txt"></div>
+      <div class="ctl"><label>&nbsp;</label>
+        <button id="c-clear" class="ghost">Clear calibration</button></div>
+    </div>
+    <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
+    <div id="c-out"></div>
+  </div>
+
+  <div class="subj card" style="margin-top:20px">
     <strong>Full profile from a file</strong>
     <p class="sub" style="margin:6px 0 10px;font-size:13px">
        Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
@@ -140,7 +160,7 @@ const LABEL = {periodic:"Periodic power", connectivity:"Connectivity (wPLI)",
                bw_alpha:"Alpha bandwidth"};
 const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8–12 Hz",
                  beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
-let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null;
+let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null, CAL={};
 
 /* ---- lois normales et SHASHo2 ---------------------------------------- */
 function erf(x){const s=x<0?-1:1;x=Math.abs(x);
@@ -230,8 +250,9 @@ function render(){
   const svg=document.getElementById("chart");
   if(!CUR){svg.innerHTML="";return;}
   const g=CUR[state.sex], ages=CUR.age, n=ages.length;
+  const off=calOf(CUR.marker);
   const P=[0.05,0.25,0.5,0.75,0.95];
-  const curves=P.map(p=>ages.map((_,i)=>shashQ(p,g.mu[i],g.sigma[i],CUR.nu,CUR.tau)));
+  const curves=P.map(p=>ages.map((_,i)=>shashQ(p,g.mu[i]+off,g.sigma[i],CUR.nu,CUR.tau)));
   let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
   const npc=NORM&&NORM[CUR.marker];
   const std_=v=>npc?(v-npc.mean)/npc.std:v;
@@ -305,14 +326,27 @@ function computeSubjects(){
     const mu=g.mu[i]+t*(g.mu[i+1]-g.mu[i]), sg=g.sigma[i]+t*(g.sigma[i+1]-g.sigma[i]);
     const np=NORM&&NORM[CUR.marker];
     const v=np?(s.value-np.mean)/np.std:s.value;      // brut -> standardisé si constantes dispo
-    const z=shashZ(v,mu,sg,CUR.nu,CUR.tau), c=pnorm(z)*100;
+    const z=shashZ(v,mu+calOf(CUR.marker),sg,CUR.nu,CUR.tau), c=pnorm(z)*100;
+    s.z=z; s.centile=c; s.inRange=inRange;
     return `<tr><td>${s.line}</td><td>${s.age}</td><td>${s.sex==="f"?"F":"M"}</td>`+
       `<td>${s.value}</td><td>${inRange?z.toFixed(2):"–"}</td><td>${inRange?c.toFixed(1):"–"}</td>`+
       `<td>${inRange?"":'<span class="flag">outside the model\'s age range</span>'}`+
       `${s.sex!==state.sex?'<span class="off">not plotted: sex ≠ selection</span>':''}</td></tr>`;
   }).join("");
   out.innerHTML=rows?`<table><thead><tr><th>#</th><th>Age</th><th>Sex</th><th>Value</th>
-    <th>z</th><th>Centile</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:"";
+    <th>z</th><th>Centile</th><th></th></tr></thead><tbody>${rows}</tbody></table>`+
+    `<button id="s-dl">Download results (CSV)</button>`:"";
+  const dl=document.getElementById("s-dl");
+  if(dl) dl.onclick=()=>{
+    const cal=calOf(CUR.marker);
+    const csv="marker,age,sex,value,z,centile,calibration_offset\n"+
+      SUBJ.filter(s=>s.ok&&s.inRange).map(s=>
+        `${CUR.marker},${s.age},${s.sex==="f"?"F":"M"},${s.value},`+
+        `${s.z.toFixed(4)},${s.centile.toFixed(2)},${cal.toFixed(4)}`).join("\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+    a.download="deeg_subjects.csv"; a.click(); URL.revokeObjectURL(a.href);
+  };
   render();
 }
 document.getElementById("go").onclick=computeSubjects;
@@ -366,8 +400,9 @@ async function runProfile(file){
     if(age<rec.a0||age>rec.a1){outOfRange.push(marker);continue;}
     const {mu,sigma}=paramsAt(rec,age,sex);
     const v=(raw-np.mean)/np.std;
-    const z=shashZ(v,mu,sigma,rec.nu,rec.tau);
-    res.push({marker,raw,z,centile:pnorm(z)*100});
+    const off=calOf(marker);
+    const z=shashZ(v,mu+off,sigma,rec.nu,rec.tau);
+    res.push({marker,raw,z,centile:pnorm(z)*100,cal:off});
   }
   if(!res.length){st('<span class="flag">No usable measure in this file.</span>');
     document.getElementById("p-out").innerHTML="";return;}
@@ -386,8 +421,8 @@ async function runProfile(file){
     `<p class="sub" style="font-size:12px;margin-top:8px">25 largest deviations out of ${res.length}.</p>`+
     `<button id="p-dl">Download full profile (CSV)</button>`;
   document.getElementById("p-dl").onclick=()=>{
-    const csv="marker,value,z,centile\n"+res.map(r=>
-      `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)}`).join("\n");
+    const csv="marker,value,z,centile,calibration_offset\n"+res.map(r=>
+      `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)},${r.cal.toFixed(4)}`).join("\n");
     const a=document.createElement("a");
     a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
     a.download="deeg_profile.csv"; a.click(); URL.revokeObjectURL(a.href);
@@ -395,6 +430,95 @@ async function runProfile(file){
 }
 document.getElementById("p-file").onchange=e=>{
   if(e.target.files[0]) runProfile(e.target.files[0]);
+};
+
+
+/* ---- calibrage sur controles locaux ----------------------------------- */
+/* Estime le decalage du site de l'utilisateur pour chaque mesure, par la
+   moyenne des ecarts a la mediane normative, retrecie vers 0 selon
+   k = n / (n + (sigma_residuel / sigma_inter-sites)^2).
+   C'est l'estimateur BLUP d'un intercept aleatoire : avec peu de controles
+   le decalage estime reste proche de 0 au lieu d'importer leur bruit. */
+const CAL_MIN = 5;
+
+function calOf(marker){
+  const c = CAL[marker];
+  return c ? c.offset : 0;
+}
+
+async function runCalibration(file){
+  const st = t => document.getElementById("c-status").innerHTML = t;
+  await loadNorm();
+  const B = (await loadBundle(st)).markers;
+  const txt = await file.text();
+  const lines = txt.trim().split(/\r?\n/).filter(Boolean);
+  let head = lines[0].split(/[,;\t]/).map(x => x.trim().toLowerCase());
+  let iM = head.indexOf("marker"), iV = head.indexOf("value"),
+      iA = head.indexOf("age"),    iS = head.indexOf("sex"), start = 1;
+  if(iM < 0 || iV < 0 || iA < 0 || iS < 0){ iM = 0; iV = 1; iA = 2; iS = 3; start = 0; }
+
+  const acc = {}, unknown = new Set(), skipped = [];
+  for(let k = start; k < lines.length; k++){
+    const c = lines[k].split(/[,;\t]/).map(x => x.trim());
+    const marker = c[iM], raw = parseFloat(c[iV]), age = parseFloat(c[iA]);
+    const sex = (c[iS] || "").toLowerCase().startsWith("f") ? "f" : "m";
+    if(!marker || !isFinite(raw) || !isFinite(age)) continue;
+    const rec = B[marker], np = NORM[marker];
+    if(!rec){ unknown.add(marker); continue; }
+    if(!np || age < rec.a0 || age > rec.a1) continue;
+    const {mu, sigma} = paramsAt(rec, age, sex);
+    const v = (raw - np.mean) / np.std;
+    (acc[marker] = acc[marker] || {d: [], sg: [], sd: rec.site_sd || 0}).d.push(v - mu);
+    acc[marker].sg.push(sigma);
+  }
+
+  CAL = {};
+  const rows = [];
+  for(const [marker, a] of Object.entries(acc)){
+    const n = a.d.length;
+    if(n < CAL_MIN){ skipped.push(`${marker} (${n})`); continue; }
+    if(!(a.sd > 0)){ skipped.push(`${marker} (no site variance)`); continue; }
+    const mean = a.d.reduce((x, y) => x + y, 0) / n;
+    const sbar = a.sg.reduce((x, y) => x + y, 0) / n;
+    const k = n / (n + (sbar / a.sd) ** 2);
+    CAL[marker] = {offset: k * mean, n, mean, k, sd: a.sd};
+    rows.push({marker, n, mean, k, offset: k * mean, sd: a.sd});
+  }
+
+  if(!rows.length){
+    st('<span class="flag">No measure had enough usable controls '
+       + `(minimum ${CAL_MIN} per measure).</span>`);
+    document.getElementById("c-out").innerHTML = "";
+    render(); return;
+  }
+  rows.sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
+  const nTot = rows.reduce((x, r) => Math.max(x, r.n), 0);
+  st(`Calibrated <b>${rows.length}</b> measures on up to <b>${nTot}</b> controls. `
+     + `Curves and scores now use your site's estimated offset.`
+     + (nTot < 100 ? ' <span class="flag">Below the 100 controls recommended for a stable estimate.</span>' : "")
+     + (unknown.size ? ` ${unknown.size} unknown measure(s).` : "")
+     + (skipped.length ? ` Skipped: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? "…" : ""}.` : ""));
+  document.getElementById("c-out").innerHTML =
+    `<table><thead><tr><th>Measure</th><th>n</th><th>Raw shift</th>`
+    + `<th>Shrinkage</th><th>Applied offset</th></tr></thead><tbody>`
+    + rows.map(r => `<tr><td>${r.marker}</td><td>${r.n}</td>`
+        + `<td>${r.mean.toFixed(3)}</td><td>${r.k.toFixed(2)}</td>`
+        + `<td>${r.offset.toFixed(3)}</td></tr>`).join("")
+    + `</tbody></table><p class="sub" style="font-size:12px;margin-top:8px">`
+    + `Values in standard deviations of the control distribution. Shrinkage is the weight `
+    + `given to your controls: it approaches 1 with a large sample and 0 with a few.</p>`;
+  render();
+}
+
+document.getElementById("c-file").onchange = e => {
+  if(e.target.files[0]) runCalibration(e.target.files[0]);
+};
+document.getElementById("c-clear").onclick = () => {
+  CAL = {};
+  document.getElementById("c-file").value = "";
+  document.getElementById("c-out").innerHTML = "";
+  document.getElementById("c-status").innerHTML = "Calibration cleared; curves are back to the average site.";
+  render();
 };
 
 (async function init(){
