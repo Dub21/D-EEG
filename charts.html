@@ -53,6 +53,18 @@ svg{display:block;width:100%;height:auto;min-width:560px}
      font-variant-numeric:tabular-nums;white-space:nowrap;z-index:5}
 #tip b{color:var(--ink)}
 .subj{margin-top:24px}
+.tabs{display:flex;gap:2px;margin:0 0 20px;border-bottom:1px solid var(--border)}
+.tabs button{appearance:none;background:none;border:none;border-bottom:2px solid transparent;
+  padding:9px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
+.panel[hidden]{display:none}
+.seg{appearance:none;border:1px solid var(--border);background:var(--surface-1);font:inherit;
+  font-size:13px;padding:6px 12px;cursor:pointer;color:var(--ink-2)}
+.seg:first-child{border-radius:6px 0 0 6px}
+.seg:last-child{border-radius:0 6px 6px 0;border-left:none}
+.seg.on{background:var(--median);border-color:var(--median);color:#fff}
+.panel>.card:first-child,.panel>.subj:first-child{margin-top:0}
 textarea{width:100%;min-height:92px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
          padding:10px;border:1px solid var(--border);border-radius:6px;
          background:var(--surface-1);color:var(--ink);resize:vertical}
@@ -83,23 +95,27 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
      <br><b>Your data never leaves your browser</b>: every computation runs locally, nothing is uploaded.
   </p>
 
-  <div class="controls" id="controls"></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="demo" class="on">Demographics</button>
+    <button data-tab="charts">Charts</button>
+    <button data-tab="maps">Brain maps</button>
+    <button data-tab="io">Input / output</button>
+  </nav>
 
-  <div class="card">
-    <div class="chartwrap">
-      <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
-      <div id="tip"></div>
+  <section class="panel" id="tab-demo">
+    <div class="subj card">
+      <strong>Subject</strong>
+      <p class="sub" style="margin:6px 0 10px;font-size:13px">
+         Age and sex of the person whose data you are placing. Used by the file-based
+         modes in <b>Input / output</b>.</p>
+      <div class="controls" style="margin-bottom:0">
+        <div class="ctl"><label for="p-age">Age (years)</label>
+          <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
+        <div class="ctl"><label for="p-sex">Sex</label>
+          <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+      </div>
     </div>
-    <div class="legend">
-      <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
-      <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
-      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
-      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
-    </div>
-    <div class="qc" id="qc"></div>
-  </div>
-
-  <div class="subj card" style="margin-top:20px">
+  <div class="subj card">
     <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
     <p class="sub" style="margin:6px 0 10px;font-size:13px">
        The published curves are those of the average training site. Sites differ, so a
@@ -118,6 +134,55 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
     <div id="c-out"></div>
   </div>
+  </section>
+
+  <section class="panel" id="tab-charts" hidden>
+  <div class="controls" id="controls"></div>
+
+  <div class="card">
+    <div class="chartwrap">
+      <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
+      <div id="tip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
+      <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
+      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
+      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
+    </div>
+    <div class="qc" id="qc"></div>
+  </div>
+  </section>
+
+  <section class="panel" id="tab-maps" hidden>
+    <div class="card">
+      <strong>Brain map explorer</strong>
+      <p class="sub" style="margin:6px 0 14px;font-size:13px">
+         Individual-level deviations from the normative trajectories across conditions and
+         feature families. Warmer colours are positive deviations, cooler ones negative.
+         <br><span class="flag">These maps come from the regional models, which are being
+         refitted to the specification used by the charts above.</span></p>
+      <div class="controls" style="margin-bottom:14px">
+        <div class="ctl"><label>Group</label>
+          <div><button id="bm-idio" class="seg on">Idiopathic</button><button id="bm-gen" class="seg">Genetic</button></div></div>
+        <div class="ctl"><label for="bm-feat">Feature family</label>
+          <select id="bm-feat">
+            <option value="periodic">Periodic power (δ θ α β γ)</option>
+            <option value="connectivity">Connectivity (δ θ α β γ)</option>
+            <option value="entropy">Entropy (δ θ α β γ)</option>
+            <option value="aperiodic">Aperiodic (offset &amp; exponent)</option>
+          </select></div>
+      </div>
+      <figure style="margin:0">
+        <img id="bm-img" alt="" loading="lazy" style="max-width:100%;border-radius:6px;display:none">
+        <div id="bm-empty" class="sub" style="display:none;padding:48px 24px;text-align:center;
+             background:var(--surface-2,#f5f5f5);border-radius:6px">Map not available yet.</div>
+        <figcaption id="bm-cap" class="sub" style="margin-top:10px;font-size:13px"></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="panel" id="tab-io" hidden>
 
   <div class="subj card" style="margin-top:20px">
     <strong>Full profile from a file</strong>
@@ -126,10 +191,6 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
        are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
        <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
     <div class="controls" style="margin-bottom:10px">
-      <div class="ctl"><label for="p-age">Age (years)</label>
-        <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
-      <div class="ctl"><label for="p-sex">Sex</label>
-        <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
       <div class="ctl"><label for="p-file">File</label>
         <input id="p-file" type="file" accept=".csv,.txt"></div>
     </div>
@@ -149,6 +210,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     </div>
     <div id="out"></div>
   </div>
+  </section>
 </div>
 
 <script>
@@ -251,11 +313,14 @@ function render(){
   if(!CUR){svg.innerHTML="";return;}
   const g=CUR[state.sex], ages=CUR.age, n=ages.length;
   const off=calOf(CUR.marker);
-  const P=[0.05,0.25,0.5,0.75,0.95];
-  const curves=P.map(p=>ages.map((_,i)=>shashQ(p,g.mu[i]+off,g.sigma[i],CUR.nu,CUR.tau)));
-  let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
   const npc=NORM&&NORM[CUR.marker];
-  const std_=v=>npc?(v-npc.mean)/npc.std:v;
+  // l'axe est l'echelle de mesure : unites d'origine quand les constantes
+  // existent, sinon ecarts-types de controles. Un point sujet s'y pose tel quel.
+  const toAxis=v=>npc?v*npc.std+npc.mean:v;
+  const std_=v=>npc?v:v;                       // valeur sujet deja dans l'unite de l'axe
+  const P=[0.05,0.25,0.5,0.75,0.95];
+  const curves=P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],CUR.nu,CUR.tau))));
+  let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
   SUBJ.forEach(s=>{if(s.ok){lo=Math.min(lo,std_(s.value));hi=Math.max(hi,std_(s.value));}});
   const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
   const a0=ages[0], a1=ages[n-1];
@@ -275,7 +340,8 @@ function render(){
   ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${H-M.b+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${t}</text>`;});
   s+=`<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1"/>`;
   s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Age (years)</text>`;
-  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">Standard deviations (controls)</text>`;
+  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">`+
+     (npc?`${CUR.marker} (measured units)`:"Standardised value (control SD)")+`</text>`;
   SUBJ.forEach(p=>{if(!p.ok||p.sex!==state.sex)return;
     s+=`<circle cx="${X(p.age).toFixed(1)}" cy="${Y(std_(p.value)).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
   s+=`<line id="cross" x1="0" y1="${M.t}" x2="0" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
@@ -519,6 +585,42 @@ document.getElementById("c-clear").onclick = () => {
   document.getElementById("c-out").innerHTML = "";
   document.getElementById("c-status").innerHTML = "Calibration cleared; curves are back to the average site.";
   render();
+};
+
+/* ---- brain maps -------------------------------------------------------- */
+const BM_LAB = {periodic:"Periodic power", connectivity:"Connectivity",
+                entropy:"Entropy", aperiodic:"Aperiodic"};
+let BM_GROUP = "idiopathic", BM_SEEN = false;
+
+function updateBrainMap(){
+  const feat = document.getElementById("bm-feat").value;
+  const img = document.getElementById("bm-img"), empty = document.getElementById("bm-empty");
+  img.style.display = "none"; empty.style.display = "none";
+  img.onerror = () => { img.style.display = "none"; empty.style.display = "block"; };
+  img.onload  = () => { img.style.display = img.naturalWidth > 1 ? "block" : "none";
+                        empty.style.display = img.naturalWidth > 1 ? "none" : "block"; };
+  img.src = "static/images/brainmaps/" + BM_GROUP + "_" + feat + ".png";
+  img.alt = "Brain map: " + BM_GROUP + " — " + BM_LAB[feat];
+  document.getElementById("bm-cap").textContent =
+    (BM_GROUP === "idiopathic" ? "Idiopathic conditions" : "Genetic conditions") + " — " + BM_LAB[feat];
+}
+function setBrainGroup(g){
+  BM_GROUP = g;
+  document.getElementById("bm-idio").classList.toggle("on", g === "idiopathic");
+  document.getElementById("bm-gen").classList.toggle("on", g === "genetic");
+  updateBrainMap();
+}
+document.getElementById("bm-idio").onclick = () => setBrainGroup("idiopathic");
+document.getElementById("bm-gen").onclick  = () => setBrainGroup("genetic");
+document.getElementById("bm-feat").onchange = updateBrainMap;
+
+document.getElementById("tabs").onclick = e => {
+  const b = e.target.closest("button[data-tab]");
+  if(!b) return;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".panel").forEach(x => x.hidden = x.id !== "tab-" + b.dataset.tab);
+  if(b.dataset.tab === "charts") render();
+  if(b.dataset.tab === "maps" && !BM_SEEN){ BM_SEEN = true; updateBrainMap(); }
 };
 
 (async function init(){
