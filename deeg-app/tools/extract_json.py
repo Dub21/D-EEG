@@ -25,6 +25,7 @@ OUT  = os.path.expanduser(os.environ.get("OUT", "~/mnt/D-EEG/static/data/normati
 NAGE = 200
 FORCE = os.environ.get("FORCE") == "1"
 ONLY  = re.compile(os.environ["ONLY"]) if os.environ.get("ONLY") else None
+SUFFIX = os.environ.get("SUFFIX", "")   # ex "_qc" pour la version ajustee sur la qualite
 
 SITE_KEY = "Unique_Site_ID"
 SEX_KEY  = "female_bin"
@@ -146,7 +147,7 @@ def eta(t, grid_x, female, qc):
 
 def one(f):
     marker = f[:-4]
-    dst = os.path.join(OUT, marker + ".json")
+    dst = os.path.join(OUT, marker + SUFFIX + ".json")
     if os.path.exists(dst) and not FORCE:
         return (marker, "skip", None)
     try:
@@ -169,6 +170,8 @@ def one(f):
             "converged": bool(np.asarray(o["converged"]).ravel()[0]),
             "age_term": tm["age_col"] or "",
             "qc_ref": (round(qc, 5) if qc is not None else None),
+            "qc_coef_mu":    (round(cf(tm["coef"], tm["qc_col"]), 6) if tm["qc_col"] else None),
+            "qc_coef_sigma": (round(cf(ts["coef"], ts["qc_col"]), 6) if ts["qc_col"] else None),
             "nu":  round(float(np.asarray(o["nu.coefficients"]).ravel()[0]), 6),
             "tau": round(float(np.exp(np.asarray(o["tau.coefficients"]).ravel()[0])), 6),
             "age": [round(float(x), 4) for x in ages],
@@ -205,7 +208,7 @@ if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     files = sorted(f for f in os.listdir(D) if f.endswith(".rds") and keep(f[:-4]))
     todo  = files if FORCE else [f for f in files
-                                 if not os.path.exists(os.path.join(OUT, f[:-4] + ".json"))]
+                                 if not os.path.exists(os.path.join(OUT, f[:-4] + SUFFIX + ".json"))]
     print(f"{len(files)} marqueurs selectionnes, {len(todo)} a traiter")
     if not todo:
         sys.exit(0)

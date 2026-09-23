@@ -70,6 +70,8 @@ def main():
         if not f.endswith(".json") or f == "manifest.json":
             continue
         marker = f[:-5]
+        if marker.endswith("_qc"):
+            continue                      # variante, signalee par un drapeau
         if ONLY and not ONLY.search(marker):
             continue
         scope, region, hemi, typ, band = parse(marker)
@@ -80,7 +82,8 @@ def main():
         entry = {"scope": scope, "region": region, "hemi": hemi,
                  "type": typ, "band": band, "marker": marker,
                  "n": d.get("n"), "conv": d.get("converged"),
-                 "raw": d.get("qc_ref") is None}
+                 "raw": d.get("qc_ref") is None,
+                 "qc": os.path.exists(os.path.join(OUT, marker + "_qc.json"))}
         entry.update(stats.get(marker, {"shapiro_p": None, "smse": None,
                                         "msll": None, "skew": None, "kurt": None}))
         models.append(entry)

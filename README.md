@@ -7,10 +7,16 @@ Project page and interactive normative EEG charts.
 
 ## Interactive charts
 
-`charts.html` serves normative trajectories for **25 whole-brain EEG measures** and
-places new subjects on them: periodic power, connectivity (wPLI), permutation entropy
-and power spectral density on five frequency bands, plus the aperiodic exponent and
-offset and the three alpha-peak parameters.
+`charts.html` serves normative trajectories for **20 whole-brain EEG measures** and
+places new subjects on them: periodic power, connectivity (wPLI) and permutation entropy
+on five frequency bands, plus the aperiodic exponent and offset and the three alpha-peak
+parameters.
+
+Each measure comes in two fitted versions. The default carries no data-quality covariate
+and is calibrated for a recording whose quality is unknown. The second includes the
+proportion of retained channels as a covariate in mu and sigma; the page uses it only when
+that value is supplied, and never substitutes a default for it — plugging in the training
+median would narrow sigma without correcting the subject's own quality offset.
 
 Regional models (34 Desikan-Killiany regions × 2 hemispheres) are being refitted to the
 specification below and are not published at present.
@@ -57,9 +63,10 @@ Site is a **random** intercept, so the published curves are those of the average
 a new site can be placed on them. Fitted with `n.cyc = 200`; 20 of the 25 models meet the
 convergence criterion.
 
-No data-quality covariate is included. Quality is reported as a sensitivity analysis
-rather than adjusted for, because adjusting on a quantity that tracks age within site
-absorbs part of the developmental effect.
+A second set of models adds the proportion of retained channels as a parametric covariate
+in mu and sigma. Its effect is marker-dependent: negligible for beta and theta power,
+but worth up to 0.47 SD at the extremes of the quality distribution for delta connectivity
+and gamma power.
 
 Trained on participants with no diagnosis (per-model n in `manifest.json`, typically
 ~1000, age 0.5 to 66 years). A subject's standardised score is
@@ -100,9 +107,8 @@ blocks them.
   between-site standard deviation of about **0.3 SD**. The published curves are those of
   the average site. A new site's own offset is not known, and that uncertainty remains on
   any new subject's centile until it is estimated from local controls.
-- **Convergence.** 5 of the 25 models do not meet the convergence criterion:
-  `exponent_mean` and `pw_alpha_mean` after 200 iterations, and three `psd_*` models still
-  capped at 20. They are flagged in the page.
+- **Convergence.** 13 of the 20 published models reach the GAMLSS iteration cap without
+  meeting the convergence criterion. Affected models are flagged under the chart.
 - **Age coverage.** Below about 2 years the models rest on a handful of participants, so
   the confidence band widens sharply there and the amplitude is not well determined.
 - **Regional models.** Only whole-brain measures are published while the regional models

@@ -58,7 +58,53 @@ svg{display:block;width:100%;height:auto;min-width:560px}
   padding:9px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
+.app{display:grid;grid-template-columns:268px minmax(0,1fr);min-height:100vh}
+.side{background:var(--surface-1);border-right:1px solid var(--border);padding:18px 0;
+      position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto}
+.brand{font-weight:600;font-size:15px;padding:0 18px 16px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.brand span{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.grp{border-bottom:1px solid var(--border)}
+.grp>summary{list-style:none;cursor:pointer;padding:11px 18px;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::after{content:"\203A";transform:rotate(90deg);transition:transform .15s;font-size:15px}
+.grp[open]>summary::after{transform:rotate(-90deg)}
+.grp>summary:hover{color:var(--ink)}
+.grpbody{padding:2px 18px 16px}
+.grpbody>strong{display:block;margin-bottom:6px;font-size:13px}
+.grpbody .controls{flex-direction:column;gap:10px;margin:0 0 10px}
+.grpbody select,.grpbody input{width:100%;min-width:0}
+.grpbody .sub{font-size:12px;max-width:none}
+.grpbody a{display:block;color:var(--median);text-decoration:none;font-size:13px;padding:3px 0}
+.grpbody a:hover{text-decoration:underline}
+.grpbody table{font-size:11px}
+.main{padding:20px 26px 64px;max-width:1180px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 20px}
+.tabs button{appearance:none;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;
+  padding:16px 14px;font:inherit;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-2);cursor:pointer;text-align:left}
+.tabs button:hover{border-color:var(--axis);color:var(--ink)}
+.tabs button.on{background:var(--median);border-color:var(--median);color:#fff;font-weight:600}
 .panel[hidden]{display:none}
+.subtabs{display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--border)}
+.subtabs button{appearance:none;background:none;border:none;border-bottom:2px solid transparent;
+  padding:8px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
+.subtabs button:hover{color:var(--ink)}
+.subtabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
+.subpanel[hidden]{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--border)}
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  .main{padding:18px}
+}
+table.ds{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+table.ds th,table.ds td{border:1px solid var(--border);padding:4px 7px;text-align:left;white-space:nowrap}
+table.ds thead th{background:var(--surface-2,#f6f6f4);font-weight:600}
+table.ds tbody tr:nth-child(even){background:var(--surface-2,#fafaf9)}
+.dshead{font-weight:600;font-size:13px;margin:0 0 6px}
+.acronym-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 24px}
+.acronym-item{font-size:12px;color:var(--ink-2)}
 .seg{appearance:none;border:1px solid var(--border);background:var(--surface-1);font:inherit;
   font-size:13px;padding:6px 12px;cursor:pointer;color:var(--ink-2)}
 .seg:first-child{border-radius:6px 0 0 6px}
@@ -81,81 +127,235 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>EEG normative trajectories</h1>
-  <p class="sub">Centile curves from GAMLSS normative models (SHASHo2 family) fitted on
-     participants with no diagnosis, with acquisition site as a random intercept.
-     Pick a measure, then place your own subjects on the curve.</p>
+<div class="app">
+  <aside class="side">
+    <div class="brand">D&#8209;EEG <span>normative charts</span></div>
 
-  <p class="note" id="units-note">
-     <b>Raw values accepted</b> for the measures listed in
-     <code>norm_params.csv</code>; the others accept already-standardised values only.
-     Standardisation centres on the median of the control values and scales by their
-     standard deviation.
-     <br><b>Your data never leaves your browser</b>: every computation runs locally, nothing is uploaded.
-  </p>
+    <details class="grp" open>
+      <summary>Data selection</summary>
+      <div class="grpbody"><div class="controls" id="controls"></div></div>
+    </details>
 
-  <nav class="tabs" id="tabs">
-    <button data-tab="demo" class="on">Demographics</button>
-    <button data-tab="charts">Charts</button>
-    <button data-tab="maps">Brain maps</button>
-    <button data-tab="io">Input / output</button>
-  </nav>
-
-  <section class="panel" id="tab-demo">
-    <div class="subj card">
-      <strong>Subject</strong>
-      <p class="sub" style="margin:6px 0 10px;font-size:13px">
-         Age and sex of the person whose data you are placing. Used by the file-based
-         modes in <b>Input / output</b>.</p>
-      <div class="controls" style="margin-bottom:0">
-        <div class="ctl"><label for="p-age">Age (years)</label>
-          <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
-        <div class="ctl"><label for="p-sex">Sex</label>
-          <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+    <details class="grp">
+      <summary>Upload data</summary>
+      <div class="grpbody">
+        <strong>Subject</strong>
+              <p class="sub" style="margin:6px 0 10px;font-size:13px">
+                 Age and sex of the person whose data you are placing. Used by the file-based
+                 modes in <b>Input / output</b>.</p>
+              <div class="controls" style="margin-bottom:0">
+                <div class="ctl"><label for="p-age">Age (years)</label>
+                  <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
+                <div class="ctl"><label for="p-sex">Sex</label>
+                  <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+                <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
+                  <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
+              </div>
+        <strong>Full profile from a file</strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
+               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
+               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="p-file">File</label>
+                <input id="p-file" type="file" accept=".csv,.txt"></div>
+            </div>
+            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="p-out"></div>
       </div>
-    </div>
-  <div class="subj card">
-    <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
-    <p class="sub" style="margin:6px 0 10px;font-size:13px">
-       The published curves are those of the average training site. Sites differ, so a
-       recording from a new site carries an unknown offset. Upload controls from your own
-       site and the page estimates that offset and shifts the curves accordingly.
-       <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
-       per measure. The estimate is shrunk toward zero when few controls are available, so
-       a small sample moves the curves little rather than moving them wrongly.
-       Bethlehem et al. recommend at least 100 controls for this step.</p>
-    <div class="controls" style="margin-bottom:10px">
-      <div class="ctl"><label for="c-file">Controls file</label>
-        <input id="c-file" type="file" accept=".csv,.txt"></div>
-      <div class="ctl"><label>&nbsp;</label>
-        <button id="c-clear" class="ghost">Clear calibration</button></div>
-    </div>
-    <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
-    <div id="c-out"></div>
-  </div>
-  </section>
+    </details>
 
-  <section class="panel" id="tab-charts" hidden>
-  <div class="controls" id="controls"></div>
+    <details class="grp">
+      <summary>Calibration</summary>
+      <div class="grpbody">
+        <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               The published curves are those of the average training site. Sites differ, so a
+               recording from a new site carries an unknown offset. Upload controls from your own
+               site and the page estimates that offset and shifts the curves accordingly.
+               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
+               per measure. The estimate is shrunk toward zero when few controls are available, so
+               a small sample moves the curves little rather than moving them wrongly.
+               Bethlehem et al. recommend at least 100 controls for this step.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="c-file">Controls file</label>
+                <input id="c-file" type="file" accept=".csv,.txt"></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="c-clear" class="ghost">Clear calibration</button></div>
+            </div>
+            <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="c-out"></div>
+      </div>
+    </details>
 
+    <details class="grp">
+      <summary>Download files</summary>
+      <div class="grpbody">
+        <a href="static/data/normative/norm_params.csv" download>Standardisation constants</a>
+        <a href="static/data/normative/manifest.json" download>Model catalogue</a>
+        <a href="https://github.com/Dub21/D-EEG" target="_blank" rel="noopener">Source code</a>
+      </div>
+    </details>
+  </aside>
+
+  <main class="main">
+    <nav class="tabs" id="tabs">
+      <button data-tab="charts" class="on"><span>Brain charts</span></button>
+      <button data-tab="maps"><span>Brain maps</span></button>
+      <button data-tab="demo"><span>Demographics</span></button>
+      <button data-tab="io"><span>Input / output</span></button>
+    </nav>
+
+    <section class="panel" id="tab-demo" hidden>
+    <div class="subj card">
+          <strong>Dataset</strong>
+                <p class="sub" style="margin:6px 0 14px;font-size:13px">
+                  4,812 resting-state EEG recordings acquired with 128-channel EGI systems across 9 independent sites, spanning ages 5 months to 66 years.
+                </p>
+      
+                <div style="overflow-x:auto">
+                  <table class="ds">
+                    <thead>
+                      <tr>
+                        <th rowspan="2">Group</th>
+                        <th rowspan="2">N</th>
+                        <th rowspan="2">Sex (F/M)</th>
+                        <th rowspan="2">Age (mean&plusmn;SD)</th>
+                        <th colspan="9" class="has-text-centered">Dataset</th>
+                      </tr>
+                      <tr>
+                        <th>HBN</th>
+                        <th>MGF</th>
+                        <th>RDB</th>
+                        <th>Q1K</th>
+                        <th>ABCCT</th>
+                        <th>UNIGE</th>
+                        <th>CIN</th>
+                        <th>SL</th>
+                        <th>CHUV</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colspan="13" class="group-header has-text-weight-semibold">Unselected / General population</td></tr>
+                      <tr><td>TD</td><td>1082</td><td>562/520</td><td>19&plusmn;16</td><td>227</td><td>279</td><td>77</td><td>160</td><td>123</td><td>112</td><td>71</td><td>14</td><td>19</td></tr>
+                      <tr><td colspan="13" class="group-header has-text-weight-semibold">Ascertained for NDDs</td></tr>
+                      <tr><td>ADHD</td><td>1766</td><td>1209/557</td><td>11&plusmn;5</td><td>1468</td><td>64</td><td>117</td><td>117</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>ASD</td><td>1309</td><td>988/321</td><td>10&plusmn;5</td><td>351</td><td>55</td><td>335</td><td>116</td><td>219</td><td>233</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>AD</td><td>904</td><td>501/403</td><td>12&plusmn;6</td><td>826</td><td>25</td><td>0</td><td>53</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>SLD</td><td>668</td><td>416/252</td><td>11&plusmn;5</td><td>603</td><td>23</td><td>0</td><td>42</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>LD</td><td>541</td><td>361/180</td><td>10&plusmn;5</td><td>320</td><td>122</td><td>0</td><td>99</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>DICCD</td><td>507</td><td>319/188</td><td>10&plusmn;3</td><td>383</td><td>3</td><td>92</td><td>28</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>ID</td><td>264</td><td>166/98</td><td>14&plusmn;11</td><td>91</td><td>107</td><td>10</td><td>42</td><td>14</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>MDD</td><td>227</td><td>111/116</td><td>14&plusmn;5</td><td>221</td><td>6</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>ED</td><td>227</td><td>168/59</td><td>9&plusmn;3</td><td>227</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>MD</td><td>223</td><td>177/46</td><td>10&plusmn;4</td><td>200</td><td>23</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>OCRD</td><td>120</td><td>65/56</td><td>12&plusmn;4</td><td>118</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td><strong>PSY</strong></td><td><strong>3329</strong></td><td><strong>2232/1097</strong></td><td><strong>11&plusmn;6</strong></td><td>2111</td><td>208</td><td>357</td><td>201</td><td>219</td><td>233</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td colspan="13" class="group-header has-text-weight-semibold">Ascertained for genetic liability</td></tr>
+                      <tr><td>FXS</td><td>70</td><td>38/32</td><td>21&plusmn;10</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>70</td><td>0</td><td>0</td></tr>
+                      <tr><td>16p DEL</td><td>61</td><td>31/30</td><td>11&plusmn;13</td><td>0</td><td>23</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>25</td><td>13</td></tr>
+                      <tr><td>SNV</td><td>34</td><td>21/13</td><td>11&plusmn;9</td><td>0</td><td>12</td><td>0</td><td>22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                      <tr><td>16p DUP</td><td>31</td><td>23/8</td><td>12&plusmn;14</td><td>0</td><td>15</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>15</td><td>0</td></tr>
+                      <tr><td>DUP</td><td>142</td><td>89/53</td><td>16&plusmn;15</td><td>0</td><td>103</td><td>0</td><td>22</td><td>0</td><td>0</td><td>0</td><td>15</td><td>2</td></tr>
+                      <tr><td>DEL</td><td>241</td><td>120/121</td><td>14&plusmn;14</td><td>0</td><td>156</td><td>0</td><td>44</td><td>0</td><td>0</td><td>0</td><td>25</td><td>16</td></tr>
+                      <tr><td><strong>GEN</strong></td><td><strong>483</strong></td><td><strong>265/218</strong></td><td><strong>16&plusmn;14</strong></td><td>0</td><td>270</td><td>0</td><td>85</td><td>0</td><td>0</td><td>70</td><td>40</td><td>18</td></tr>
+                      <tr style="background:#eee;"><td><strong>TOTAL</strong></td><td><strong>4812</strong></td><td><strong>3014/1798</strong></td><td><strong>13&plusmn;11</strong></td><td><strong>2404</strong></td><td><strong>598</strong></td><td><strong>515</strong></td><td><strong>376</strong></td><td><strong>345</strong></td><td><strong>342</strong></td><td><strong>141</strong></td><td><strong>54</strong></td><td><strong>37</strong></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+      
+                <!-- Dataset acronyms -->
+                <div style="margin-top:18px">
+                  <p class="dshead">Datasets</p>
+                  <div class="acronym-grid">
+                    <div class="acronym-item"><strong>ABCCT:</strong> Autism Biomarkers Consortium for Clinical Trials</div>
+                    <div class="acronym-item"><strong>CHUV:</strong> Centre Hospitalier Universitaire Vaudois</div>
+                    <div class="acronym-item"><strong>CIN:</strong> Cincinnati Children&rsquo;s Hospital</div>
+                    <div class="acronym-item"><strong>HBN:</strong> Healthy Brain Network</div>
+                    <div class="acronym-item"><strong>MGF:</strong> Montr&eacute;al Genetic Family</div>
+                    <div class="acronym-item"><strong>Q1K:</strong> Quebec 1000</div>
+                    <div class="acronym-item"><strong>RDB:</strong> H&ocirc;pital Robert-Debr&eacute;, Paris</div>
+                    <div class="acronym-item"><strong>SL:</strong> Simons Searchlight</div>
+                    <div class="acronym-item"><strong>UNIGE:</strong> Universit&eacute; de Gen&egrave;ve</div>
+                  </div>
+                </div>
+      
+                <!-- Diagnosis acronyms -->
+                <div style="margin-top:14px">
+                  <p class="dshead">Diagnoses</p>
+                  <div class="acronym-grid">
+                    <div class="acronym-item"><strong>AD:</strong> Anxiety Disorder</div>
+                    <div class="acronym-item"><strong>ADHD:</strong> Attention-Deficit/Hyperactivity Disorder</div>
+                    <div class="acronym-item"><strong>ASD:</strong> Autism Spectrum Disorder</div>
+                    <div class="acronym-item"><strong>DICCD:</strong> Disruptive, Impulse-Control, and Conduct Disorders</div>
+                    <div class="acronym-item"><strong>ED:</strong> Elimination Disorders</div>
+                    <div class="acronym-item"><strong>ID:</strong> Intellectual Disability</div>
+                    <div class="acronym-item"><strong>LD:</strong> Language Disorder</div>
+                    <div class="acronym-item"><strong>MD:</strong> Motor Disorders</div>
+                    <div class="acronym-item"><strong>MDD:</strong> Major Depressive Disorder</div>
+                    <div class="acronym-item"><strong>OCRD:</strong> Obsessive-Compulsive and Related Disorders</div>
+                    <div class="acronym-item"><strong>PSY:</strong> All psychiatric conditions combined</div>
+                    <div class="acronym-item"><strong>SLD:</strong> Specific Learning Disorder</div>
+                    <div class="acronym-item"><strong>TD:</strong> Typically Developing</div>
+                  </div>
+                </div>
+      
+                <!-- Genetic acronyms -->
+                <div style="margin-top:14px">
+                  <p class="dshead">Genetic variants</p>
+                  <div class="acronym-grid">
+                    <div class="acronym-item"><strong>DEL:</strong> Deletion (all)</div>
+                    <div class="acronym-item"><strong>DUP:</strong> Duplication (all)</div>
+                    <div class="acronym-item"><strong>16p DEL:</strong> 16p11.2 deletion</div>
+                    <div class="acronym-item"><strong>16p DUP:</strong> 16p11.2 duplication</div>
+                    <div class="acronym-item"><strong>FXS:</strong> Fragile X Syndrome</div>
+                    <div class="acronym-item"><strong>GEN:</strong> All genetic variants combined</div>
+                    <div class="acronym-item"><strong>SNV:</strong> Single nucleotide variant</div>
+                  </div>
+                </div>
+
+        </div>
+    </section>
+
+    <section class="panel" id="tab-charts">
+      <nav class="subtabs" id="ct-tabs">
+        <button data-sub="model" class="on">Normative trajectory</button>
+        <button data-sub="raw">Paper figure (observed data)</button>
+      </nav>
+
+      <div class="subpanel" id="ct-model">
   <div class="card">
-    <div class="chartwrap">
-      <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
-      <div id="tip"></div>
+      <div class="chartwrap">
+        <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
+        <div id="tip"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
+        <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
+        <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
+        <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
+      </div>
+      <div class="qc" id="qc"></div>
     </div>
-    <div class="legend">
-      <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
-      <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
-      <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
-      <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
-    </div>
-    <div class="qc" id="qc"></div>
-  </div>
-  </section>
+      </div>
 
-  <section class="panel" id="tab-maps" hidden>
-    <div class="card">
+      <div class="subpanel" id="ct-raw" hidden>
+        <div class="card">
+          <strong>Observed data and trajectory</strong>
+          <p class="sub" style="margin:6px 0 12px;font-size:13px">
+             The figure published in the paper: every participant plotted against the
+             smoothed trajectory, in the measure's own units. Controls and clinical groups
+             are shown together, uncorrected for site.</p>
+          <img id="ct-img" alt="" loading="lazy" style="max-width:100%;border-radius:6px;display:none">
+          <div id="ct-empty" class="sub" style="display:none;padding:44px 24px;text-align:center;
+               background:var(--surface-2,#f5f5f4);border-radius:6px">
+            No published figure for this measure yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-maps" hidden>
+<div class="card">
       <strong>Brain map explorer</strong>
       <p class="sub" style="margin:6px 0 14px;font-size:13px">
          Individual-level deviations from the normative trajectories across conditions and
@@ -180,37 +380,23 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
         <figcaption id="bm-cap" class="sub" style="margin-top:10px;font-size:13px"></figcaption>
       </figure>
     </div>
-  </section>
+    </section>
 
-  <section class="panel" id="tab-io" hidden>
-
-  <div class="subj card" style="margin-top:20px">
-    <strong>Full profile from a file</strong>
-    <p class="sub" style="margin:6px 0 10px;font-size:13px">
-       Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
-       are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
-       <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
-    <div class="controls" style="margin-bottom:10px">
-      <div class="ctl"><label for="p-file">File</label>
-        <input id="p-file" type="file" accept=".csv,.txt"></div>
-    </div>
-    <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
-    <div id="p-out"></div>
-  </div>
-
-  <div class="subj card" style="margin-top:20px">
-    <strong>Place your own subjects</strong>
-    <p class="sub" style="margin:6px 0 10px;font-size:13px">
-       One row per subject: <code>age, sex (M/F), raw value</code> for the measure selected
-       above. Example: <code>12.4, F, 0.573</code></p>
-    <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
-    <div>
-      <button id="go">Compute</button>
-      <button id="clear" class="ghost">Clear</button>
-    </div>
-    <div id="out"></div>
-  </div>
-  </section>
+    <section class="panel" id="tab-io" hidden>
+    <div class="subj card" style="margin-top:20px">
+        <strong>Place your own subjects</strong>
+        <p class="sub" style="margin:6px 0 10px;font-size:13px">
+           One row per subject: <code>age, sex (M/F), raw value</code> for the measure selected
+           above. Example: <code>12.4, F, 0.573</code></p>
+        <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
+        <div>
+          <button id="go">Compute</button>
+          <button id="clear" class="ghost">Clear</button>
+        </div>
+        <div id="out"></div>
+      </div>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -223,6 +409,28 @@ const LABEL = {periodic:"Periodic power", connectivity:"Connectivity (wPLI)",
 const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8–12 Hz",
                  beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
 let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null, CAL={};
+
+/* ---- variante ajustee sur la qualite ----------------------------------
+   Le champ decide : vide -> modele sans covariable, calibre pour quelqu'un
+   dont on ignore la qualite. Rempli -> modele avec covariable, evalue a la
+   valeur fournie. Aucun defaut n'est injecte : une mediane par defaut
+   retrecirait sigma sans corriger l'ecart propre au sujet. */
+function userQC(){
+  const e = document.getElementById("p-qc");
+  if(!e || e.value.trim() === "") return null;
+  const v = parseFloat(e.value);
+  return (isFinite(v) && v >= 0 && v <= 1) ? v : null;
+}
+function recFor(B, marker, qc){
+  if(qc !== null && B[marker + "_qc"]) return {rec: B[marker + "_qc"], adj: true};
+  return {rec: B[marker], adj: false};
+}
+function qcShift(rec, qc){
+  if(qc === null || rec.qc_ref === undefined) return {dmu: 0, fsg: 1};
+  const d = qc - rec.qc_ref;
+  return {dmu: (rec.qc_coef_mu || 0) * d,
+          fsg: Math.exp((rec.qc_coef_sigma || 0) * d)};
+}
 
 /* ---- lois normales et SHASHo2 ---------------------------------------- */
 function erf(x){const s=x<0?-1:1;x=Math.abs(x);
@@ -454,21 +662,23 @@ async function runProfile(file){
   let head=lines[0].split(/[,;\t]/).map(x=>x.trim().toLowerCase());
   let iM=head.indexOf("marker"), iV=head.indexOf("value"), start=1;
   if(iM<0||iV<0){iM=0;iV=1;start=0;}                       // sans en-tête : 2 colonnes
+  const QCV=userQC();
   const res=[], unknown=[], noConst=[], outOfRange=[];
   for(let k=start;k<lines.length;k++){
     const c=lines[k].split(/[,;\t]/).map(x=>x.trim());
     const marker=c[iM], raw=parseFloat(c[iV]);
     if(!marker||!isFinite(raw)) continue;
-    const rec=B[marker];
+    const {rec, adj}=recFor(B, marker, QCV);
     if(!rec){unknown.push(marker);continue;}
     const np=NORM[marker];
     if(!np){noConst.push(marker);continue;}
     if(age<rec.a0||age>rec.a1){outOfRange.push(marker);continue;}
     const {mu,sigma}=paramsAt(rec,age,sex);
+    const sh=qcShift(rec,QCV);
     const v=(raw-np.mean)/np.std;
     const off=calOf(marker);
-    const z=shashZ(v,mu+off,sigma,rec.nu,rec.tau);
-    res.push({marker,raw,z,centile:pnorm(z)*100,cal:off});
+    const z=shashZ(v,mu+off+sh.dmu,sigma*sh.fsg,rec.nu,rec.tau);
+    res.push({marker,raw,z,centile:pnorm(z)*100,cal:off,adj});
   }
   if(!res.length){st('<span class="flag">No usable measure in this file.</span>');
     document.getElementById("p-out").innerHTML="";return;}
@@ -478,7 +688,10 @@ async function runProfile(file){
      `(expected in a typical subject: ${(res.length*0.0455).toFixed(0)}).`+
      (unknown.length?` ${unknown.length} unknown measure(s).`:"")+
      (noConst.length?` ${noConst.length} without constants.`:"")+
-     (outOfRange.length?` ${outOfRange.length} outside the age range.`:""));
+     (outOfRange.length?` ${outOfRange.length} outside the age range.`:"")+
+     (res.some(r=>r.adj)
+        ? ` Quality-adjusted models used (${res.filter(r=>r.adj).length}).`
+        : " Quality field empty: unadjusted models used."));
   const rows=res.slice(0,25).map(r=>`<tr><td>${r.marker}</td><td>${r.raw}</td>`+
      `<td>${r.z.toFixed(2)}</td><td>${r.centile.toFixed(1)}</td></tr>`).join("");
   document.getElementById("p-out").innerHTML=
@@ -487,8 +700,8 @@ async function runProfile(file){
     `<p class="sub" style="font-size:12px;margin-top:8px">25 largest deviations out of ${res.length}.</p>`+
     `<button id="p-dl">Download full profile (CSV)</button>`;
   document.getElementById("p-dl").onclick=()=>{
-    const csv="marker,value,z,centile,calibration_offset\n"+res.map(r=>
-      `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)},${r.cal.toFixed(4)}`).join("\n");
+    const csv="marker,value,z,centile,calibration_offset,quality_adjusted\n"+res.map(r=>
+      `${r.marker},${r.raw},${r.z.toFixed(4)},${r.centile.toFixed(2)},${r.cal.toFixed(4)},${r.adj?1:0}`).join("\n");
     const a=document.createElement("a");
     a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
     a.download="deeg_profile.csv"; a.click(); URL.revokeObjectURL(a.href);
@@ -614,12 +827,36 @@ document.getElementById("bm-idio").onclick = () => setBrainGroup("idiopathic");
 document.getElementById("bm-gen").onclick  = () => setBrainGroup("genetic");
 document.getElementById("bm-feat").onchange = updateBrainMap;
 
+/* ---- figure publiee, en regard de la trajectoire modelisee ------------- */
+const RAWDIR = "static/images/trajectories/";
+let RAW_SUB = "model";
+
+function updateRawFigure(){
+  if(!CUR) return;
+  const img = document.getElementById("ct-img"), empty = document.getElementById("ct-empty");
+  img.style.display = "none"; empty.style.display = "none";
+  img.onerror = () => { img.style.display = "none"; empty.style.display = "block"; };
+  img.onload  = () => { img.style.display = "block"; empty.style.display = "none"; };
+  img.src = RAWDIR + CUR.marker + ".png";
+  img.alt = "Observed data and trajectory for " + CUR.marker;
+}
+
+document.getElementById("ct-tabs").onclick = e => {
+  const b = e.target.closest("button[data-sub]");
+  if(!b) return;
+  RAW_SUB = b.dataset.sub;
+  document.querySelectorAll("#ct-tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.getElementById("ct-model").hidden = RAW_SUB !== "model";
+  document.getElementById("ct-raw").hidden   = RAW_SUB !== "raw";
+  if(RAW_SUB === "raw") updateRawFigure(); else render();
+};
+
 document.getElementById("tabs").onclick = e => {
   const b = e.target.closest("button[data-tab]");
   if(!b) return;
   document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
   document.querySelectorAll(".panel").forEach(x => x.hidden = x.id !== "tab-" + b.dataset.tab);
-  if(b.dataset.tab === "charts") render();
+  if(b.dataset.tab === "charts"){ if(RAW_SUB === "raw") updateRawFigure(); else render(); }
   if(b.dataset.tab === "maps" && !BM_SEEN){ BM_SEEN = true; updateBrainMap(); }
 };
 

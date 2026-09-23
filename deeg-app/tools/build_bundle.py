@@ -31,7 +31,12 @@ def main():
                 pass
 
     out, missing = {}, []
+    keys = []
     for mk in markers:
+        keys.append(mk)
+        if os.path.exists(os.path.join(OUT, mk + "_qc.json")):
+            keys.append(mk + "_qc")
+    for mk in keys:
         p = os.path.join(OUT, mk + ".json")
         if not os.path.exists(p):
             missing.append(mk); continue
@@ -42,13 +47,17 @@ def main():
         rec = {"a0": round(a0, 4), "a1": round(a1, 4),
                "nu": d["nu"], "tau": d["tau"],
                "site_sd": d.get("site_sd", 0.0)}
+        for k in ("qc_ref", "qc_coef_mu", "qc_coef_sigma"):
+            if d.get(k) is not None:
+                rec[k] = d[k]
         for sex in ("m", "f"):
             mu = np.interp(grid, age, np.asarray(d[sex]["mu"], float))
             sg = np.interp(grid, age, np.asarray(d[sex]["sigma"], float))
             rec[sex] = [[round(float(v), 5) for v in mu],
                         [round(float(v), 5) for v in sg]]
-        if mk in norm:
-            rec["mean"], rec["std"] = norm[mk]
+        base = mk[:-3] if mk.endswith("_qc") else mk
+        if base in norm:
+            rec["mean"], rec["std"] = norm[base]
         out[mk] = rec
 
     bundle = {"n_age": NAGE, "markers": out}
