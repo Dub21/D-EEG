@@ -411,35 +411,31 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
                 <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
                   <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
               </div>
-        <strong>Full profile from a file</strong>
+        <strong>Data file</strong>
             <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
-               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
-               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
+               Two shapes are accepted and the page tells them apart on its own.
+               <br><b>One subject:</b> two columns, <code>marker,value</code>, one row per measure,
+               raw values. The age and sex above are then used.
+               <br><b>A whole cohort:</b> one row per subject, with an <code>age</code> column and a
+               sex column (<code>sex</code> in M/F, or <code>female_bin</code>); <code>ratio_ch_good</code>
+               is used when present, and any <code>true</code>/<code>false</code> column becomes a
+               diagnosis group.
+               <br>In both cases the measure columns carry the model's own names, for instance
+               <code>bankssts_lh_alpha_periodic</code> or <code>connectivity_alpha_mean</code>.
+               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.
+               The file stays in your browser.</p>
             <div class="controls" style="margin-bottom:10px">
               <div class="ctl"><label for="p-file">File</label>
                 <input id="p-file" type="file" accept=".csv,.txt"></div>
-            </div>
-            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="p-out"></div>
-        <strong style="margin-top:16px">A whole cohort from a file</strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               One row per subject, raw values. Needs an <code>age</code> column and a sex column
-               (<code>sex</code> with M/F, or <code>female_bin</code>); <code>ratio_ch_good</code> is
-               used when present. Diagnosis columns holding <code>true</code>/<code>false</code> become
-               groups. Measure columns are matched against the model names, anything else is ignored.
-               Every subject is placed on the trajectory and the groups can be mapped in
-               <b>Brain maps</b>. The file stays in your browser.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="co-file">Cohort file</label>
-                <input id="co-file" type="file" accept=".csv,.txt"></div>
               <div class="ctl" id="co-wrap" style="display:none"><label for="co-group">Colour by</label>
                 <select id="co-group"></select></div>
               <div class="ctl"><label>&nbsp;</label>
-                <button id="co-clear" class="ghost">Clear cohort</button></div>
+                <button id="co-clear" class="ghost">Clear</button></div>
             </div>
+            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
             <div id="co-status" class="sub" style="font-size:13px;margin:0"></div>
             <div id="co-legend" class="legend" style="margin:8px 0 0"></div>
+            <div id="p-out"></div>
       </div>
     </details>
 <details class="grp">
@@ -785,7 +781,10 @@ async function runProfile(file){
   if(iM<0||iV<0){iM=0;iV=1;start=0;}                       // sans en-tête : 2 colonnes
   const QCV=userQC();
   const res=[], unknown=[], noConst=[], outOfRange=[];
-  PROFILE={};
+  PROFILE={}; COHORT=null;
+  document.getElementById("co-wrap").style.display="none";
+  document.getElementById("co-legend").innerHTML="";
+  const bw=document.getElementById("bo-gwrap"); if(bw) bw.style.display="none";
   for(let k=start;k<lines.length;k++){
     const c=lines[k].split(/[,;\t]/).map(x=>x.trim());
     const marker=c[iM], raw=parseFloat(c[iV]);
@@ -831,9 +830,6 @@ async function runProfile(file){
     a.download="deeg_profile.csv"; a.click(); URL.revokeObjectURL(a.href);
   };
 }
-document.getElementById("p-file").onchange=e=>{
-  if(e.target.files[0]) runProfile(e.target.files[0]);
-};
 
 
 /* ---- calibrage sur controles locaux ----------------------------------- */
@@ -976,6 +972,61 @@ document.getElementById("ct-tabs").onclick = e => {
 };
 
 
+/* Decoupage CSV respectant les guillemets. Un champ comme "1,402,203" est
+   frequent dans les exports et un split naif decalerait toutes les colonnes
+   suivantes. splitCSV sert pour l'en-tete ; pickCSV parcourt la ligne une
+   seule fois et ne materialise que les colonnes demandees, ce qui compte
+   quand le fichier en a plusieurs milliers. */
+function splitCSV(line, sep){
+  const out = []; let cur = "", q = false;
+  for(let i = 0; i < line.length; i++){
+    const c = line[i];
+    if(q){
+      if(c === '"'){ if(line[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if(c === '"') q = true;
+    else if(c === sep){ out.push(cur); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur); return out;
+}
+function pickCSV(line, sep, want, out){
+  let col = 0, i = 0, n = line.length, slot = want[0], k = 0;
+  out.length = 0;
+  while(i <= n){
+    let cur = "", q = false;
+    for(; i < n; i++){
+      const c = line[i];
+      if(q){ if(c === '"'){ if(line[i+1] === '"'){ if(col === slot) cur += '"'; i++; } else q = false; }
+             else if(col === slot) cur += c; }
+      else if(c === '"') q = true;
+      else if(c === sep){ i++; break; }
+      else if(col === slot) cur += c;
+    }
+    if(col === slot){ out.push(cur); k++; slot = k < want.length ? want[k] : -1; }
+    col++;
+    if(i >= n) break;
+    if(slot < 0) break;
+  }
+  while(out.length < want.length) out.push("");
+  return out;
+}
+
+/* Decoupe un tampon en lignes, en ignorant les sauts de ligne a l'interieur
+   d'un champ entre guillemets. */
+function makeLiner(){
+  let q = false;
+  return (buf, emit) => {
+    let start = 0;
+    for(let i = 0; i < buf.length; i++){
+      const c = buf[i];
+      if(c === '"') q = !q;
+      else if(c === "\n" && !q){ emit(buf.slice(start, i).replace(/\r$/, "")); start = i + 1; }
+    }
+    return buf.slice(start);
+  };
+}
+
 /* ---- cohorte : un fichier large, une ligne par sujet ------------------- */
 let COHORT = null;
 
@@ -1003,13 +1054,14 @@ async function loadCohort(file){
   const rd = file.stream().pipeThrough(new TextDecoderStream()).getReader();
   let buf = "", head = null, iAge = -1, iSex = -1, iFem = -1, iQC = -1;
   let marks = [], groups = [], acc = null, n = 0, sep = ",";
-  let pend = [], decided = false;
+  let pend = [], decided = false, want = [], tmp = [];
+  let iOf = {};   // index de colonne -> rang dans want
 
   const take = line => {
     if(!line) return;
     if(head === null){
       sep = (line.match(/;/g) || []).length > (line.match(/,/g) || []).length ? ";" : ",";
-      head = line.split(sep).map(x => x.trim().replace(/^"|"$/g, ""));
+      head = splitCSV(line, sep).map(x => x.trim());
       head.forEach((h, i) => {
         const l = h.toLowerCase();
         if(l === "age") iAge = i;
@@ -1022,28 +1074,27 @@ async function loadCohort(file){
       marks.forEach(([m]) => acc.v[m] = []);
       return;
     }
-    const c = line.split(sep);
-    if(c.length < head.length - 2) return;
-    // Les colonnes de diagnostic sont reconnues sur les 50 premieres lignes de
+    // Les colonnes de diagnostic se reconnaissent sur les 50 premieres lignes de
     // donnees, pas sur la premiere seule : une colonne vide en tete de fichier
-    // serait sinon manquee. Est un groupe toute colonne dont les valeurs non
-    // vides sont toutes des booleens litteraux.
+    // serait sinon manquee. On garde ces lignes brutes, puis on les rejoue une
+    // fois que l'on sait quelles colonnes lire.
     if(!decided){
-      pend.push(c);
+      pend.push(line);
       if(pend.length < 50) return;
-      decide();
-      const q = pend; pend = []; decided = true;
-      q.forEach(push);
+      flush();
       return;
     }
-    push(c);
+    push(pickCSV(line, sep, want, tmp));
   };
 
-  const decide = () => {
+  /* Est un groupe toute colonne, hors age, sexe, qualite et mesures, dont les
+     valeurs non vides des lignes examinees sont toutes des booleens litteraux. */
+  const flush = () => {
+    const rows = pend.map(l => splitCSV(l, sep));
     head.forEach((h, i) => {
       if(i === iAge || i === iSex || i === iFem || i === iQC || NORM[h]) return;
       let seen = 0;
-      for(const c of pend){
+      for(const c of rows){
         const raw = (c[i] || "").trim();
         if(!raw) continue;
         if(!isBool(raw)) return;
@@ -1051,28 +1102,39 @@ async function loadCohort(file){
       }
       if(seen){ groups.push([h, i]); acc.g[h] = []; }
     });
+    // on ne lira plus que les colonnes utiles : sur un fichier a 7000 colonnes
+    // cela evite de materialiser des milliers de chaines par ligne
+    const set = new Set();
+    [iAge, iSex, iFem, iQC].forEach(k => { if(k >= 0) set.add(k); });
+    groups.forEach(([, k]) => set.add(k));
+    marks.forEach(([, k]) => set.add(k));
+    want = [...set].sort((a, b) => a - b);
+    want.forEach((k, r) => iOf[k] = r);
+    decided = true;
+    rows.forEach(c => push(want.map(k => c[k])));
+    pend = [];
   };
 
   const push = c => {
-    acc.age.push(parseFloat(c[iAge]));
-    acc.sex.push(iSex >= 0 ? ((c[iSex] || "").trim().toLowerCase().startsWith("f") ? 1 : 0)
-                           : (iFem >= 0 ? (parseFloat(c[iFem]) ? 1 : 0) : 0));
-    acc.qc.push(iQC >= 0 ? parseFloat(c[iQC]) : NaN);
-    groups.forEach(([h, i]) => acc.g[h].push(asBool(c[i] || "false") ? 1 : 0));
-    marks.forEach(([m, i]) => acc.v[m].push(parseFloat(c[i])));
+    const at = k => c[iOf[k]];
+    acc.age.push(parseFloat(at(iAge)));
+    acc.sex.push(iSex >= 0 ? ((at(iSex) || "").trim().toLowerCase().startsWith("f") ? 1 : 0)
+                           : (iFem >= 0 ? (parseFloat(at(iFem)) ? 1 : 0) : 0));
+    acc.qc.push(iQC >= 0 ? parseFloat(at(iQC)) : NaN);
+    groups.forEach(([h, k]) => acc.g[h].push(asBool(at(k) || "false") ? 1 : 0));
+    marks.forEach(([m, k]) => acc.v[m].push(parseFloat(at(k))));
     n++;
   };
 
+  const liner = makeLiner();
   for(;;){
     const {value, done} = await rd.read();
     if(done) break;
-    buf += value;
-    let k;
-    while((k = buf.indexOf("\n")) >= 0){ take(buf.slice(0, k).replace(/\r$/, "")); buf = buf.slice(k + 1); }
+    buf = liner(buf + value, take);
     if(n && n % 500 === 0) st(`Reading… ${n} subjects`);
   }
   take(buf.replace(/\r$/, ""));
-  if(!decided && head){ decide(); pend.forEach(push); pend = []; decided = true; }
+  if(!decided && head) flush();
 
   if(!head || iAge < 0){
     st('<span class="flag">No <code>age</code> column found.</span>'); return; }
@@ -1085,15 +1147,21 @@ async function loadCohort(file){
 
   const cols = {};
   marks.forEach(([m]) => cols[m] = Float32Array.from(acc.v[m]));
-  const G = {};
+  // un groupe trop petit ne donne ni carte ni nuage lisible, et un export
+  // clinique traine souvent des dizaines de colonnes booleennes quasi vides
+  const GMIN = 20;
+  const G = {}; let tiny = 0;
   groups.forEach(([h]) => { const a = Uint8Array.from(acc.g[h]);
                             const c = a.reduce((x, y) => x + y, 0);
-                            if(c) G[h] = {flag: a, n: c}; });
+                            if(c >= GMIN) G[h] = {flag: a, n: c};
+                            else if(c) tiny++; });
   const order = Object.keys(G).sort((a, b) => G[b].n - G[a].n);
   COHORT = {n, age: Float32Array.from(acc.age), sexF: Uint8Array.from(acc.sex),
             qc: Float32Array.from(acc.qc), cols, groups: G, order,
             hasSex: iSex >= 0 || iFem >= 0};
 
+  PROFILE = null;
+  document.getElementById("p-out").innerHTML = "";
   const gs = document.getElementById("co-group");
   gs.innerHTML = '<option value="">All diagnoses</option>'
     + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
@@ -1107,6 +1175,7 @@ async function loadCohort(file){
     ? Array.from({length: n}, (_, i) => order.reduce((x, g) => x + G[g].flag[i], 0)).filter(x => x > 1).length
     : 0;
   st(`<b>${n}</b> subjects, <b>${marks.length}</b> measures, <b>${order.length}</b> diagnosis column(s).`
+     + (tiny ? ` ${tiny} column(s) with fewer than ${GMIN} subjects ignored.` : "")
      + (COHORT.hasSex ? "" : ' <span class="flag">No sex column: all treated as male.</span>')
      + (multi ? ` ${multi} subject(s) carry more than one diagnosis; the chart colours each by its largest group.` : ""));
   cohortLegend();
@@ -1153,8 +1222,27 @@ function cohortZ(marker, rec, idx){
   return out;
 }
 
-document.getElementById("co-file").onchange = e => {
-  const f = e.target.files[0]; if(f) loadCohort(f);
+/* Un seul depot pour les deux formes. On lit l'en-tete et on tranche :
+   deux colonnes ou un couple marker/value donnent un profil, un fichier large
+   avec une colonne age donne une cohorte. Les deux champs voisins invitaient
+   sinon a se tromper d'entree. */
+async function loadDataFile(f){
+  ["p-status","co-status","p-out","co-legend"].forEach(i => {
+    const e = document.getElementById(i); if(e) e.innerHTML = ""; });
+  const head = (await f.slice(0, 1 << 16).text()).split(/\r?\n/)[0] || "";
+  const sep = (head.match(/;/g) || []).length > (head.match(/,/g) || []).length ? ";" : ",";
+  const cols = splitCSV(head, sep).map(x => x.trim().toLowerCase());
+  const wide = cols.includes("age") && cols.length > 4;
+  const pair = cols.length <= 3 || (cols.includes("marker") && cols.includes("value"));
+  if(wide && !pair) return loadCohort(f);
+  if(pair) return runProfile(f);
+  document.getElementById("p-status").innerHTML =
+    '<span class="flag">Cannot tell what this file is.</span> A profile has a '
+    + '<code>marker</code> and a <code>value</code> column; a cohort has an <code>age</code> column '
+    + 'and one column per measure.';
+}
+document.getElementById("p-file").onchange = e => {
+  const f = e.target.files[0]; if(f) loadDataFile(f);
 };
 document.getElementById("co-group").onchange = () => { cohortLegend(); render(); };
 document.getElementById("co-clear").onclick = () => {
@@ -1163,8 +1251,12 @@ document.getElementById("co-clear").onclick = () => {
   document.getElementById("co-legend").innerHTML = "";
   document.getElementById("co-wrap").style.display = "none";
   const w = document.getElementById("bo-gwrap"); if(w) w.style.display = "none";
-  document.getElementById("co-file").value = "";
+  PROFILE = null;
+  document.getElementById("p-status").innerHTML = "";
+  document.getElementById("p-out").innerHTML = "";
+  document.getElementById("p-file").value = "";
   render();
+  if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
 };
 
 /* Benjamini-Hochberg : q-valeurs, dans l'ordre des p fournis */
