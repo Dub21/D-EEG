@@ -72,7 +72,11 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .grp>summary:hover{color:var(--ink)}
 .grpbody{padding:2px 18px 16px}
 .grpbody table{font-size:12px}
-#pick{margin:0 0 18px}
+#pick{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:0 0 18px}
+#pick .controls{margin:0}
+.vflag{display:inline-block;padding:7px 11px;border-radius:6px;font-size:13px;
+  border:1px solid var(--border);background:var(--surface-1);color:var(--ink-2);white-space:nowrap}
+.vflag.adj{border-color:var(--median);color:var(--median)}
 .grpbody>strong{display:block;margin-bottom:6px;font-size:13px}
 .grpbody .controls{flex-direction:row;flex-wrap:wrap;gap:12px;margin:0 0 12px}
 .grpbody select,.grpbody input{min-width:0}
@@ -256,7 +260,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     </section>
 
     <section class="panel" id="tab-charts">
-      <div id="pick"><div class="controls" id="controls"></div></div>
+      <div id="pick"><div class="controls" id="controls"></div><div class="ctl" id="variant-wrap"><label>Model</label><span id="variant" class="vflag"></span></div></div>
       <nav class="subtabs" id="ct-tabs">
         <button data-sub="model" class="on">Normative trajectory</button>
         <button data-sub="raw">Paper figure (observed data)</button>
@@ -500,7 +504,9 @@ async function load(){
   const m=markerFor();
   const boxes=["qc","qc-raw"].map(i=>document.getElementById(i)).filter(Boolean);
   const put=h=>boxes.forEach(b=>b.innerHTML=h);
-  if(!m){CUR=null;put("<span>No model for this combination.</span>");render();return;}
+  if(!m){CUR=null;put("<span>No model for this combination.</span>");
+         const v=document.getElementById("variant"); if(v)v.textContent="–";
+         render();return;}
   // le champ qualite decide de la variante affichee, comme pour le depot de profil
   const useQC = userQC()!==null && m.qc;
   const file  = m.marker + (useQC?"_qc":"");
@@ -508,6 +514,15 @@ async function load(){
   CUR={...j,marker:m.marker,meta:m};
   const f=(v,d=2)=>v==null?"–":(+v).toFixed(d);
   const g=k=>m[useQC?k+"_qc":k];
+  const vf=document.getElementById("variant");
+  if(vf){
+    vf.textContent = useQC ? "quality-adjusted"
+      : (userQC()!==null ? "unadjusted (no adjusted model)" : "unadjusted");
+    vf.classList.toggle("adj", useQC);
+    vf.title = useQC
+      ? "The good-channel value you entered selects the model fitted with that covariate."
+      : "Leave the good-channel field empty and the model fitted without it is used.";
+  }
   put(
     `<span>model <b>${file}</b></span>`+
     `<span>n controls <b>${j.n}</b></span>`+
