@@ -529,29 +529,65 @@ function sel(id,label,opts,val){
 }
 const state={type:"periodic",band:"alpha",region:"Whole brain",hemi:"lh",sex:"m"};
 
-function hasBand(t){ return MAN.models.some(x=>x.type===t && x.band); }
+const REG_BANDS = ["delta","theta","alpha","beta","gamma","all"];
+const regional = () => state.region !== "Whole brain";
+function hasBand(t){
+  if(regional() && RIDX) return REG_BANDS.some(b=>RIDX.families[t+"_"+b]);
+  return MAN.models.some(x=>x.type===t && x.band);
+}
 function bandsFor(t){
+  if(regional() && RIDX) return REG_BANDS.filter(b=>RIDX.families[t+"_"+b]);
   return MAN.bands.filter(b=>MAN.models.some(x=>x.type===t && x.band===b));
 }
+function typesFor(){
+  const all = [...new Set(MAN.models.map(m=>m.type))].sort();
+  if(!regional() || !RIDX) return all;
+  // une famille regionale porte soit <type>_<bande>, soit <type> seul
+  return all.filter(t => REG_BANDS.some(b=>RIDX.families[t+"_"+b]) || RIDX.families[t]);
+}
 function markerFor(){
-  const glob = state.region==="Whole brain";
   const nb = !hasBand(state.type);
+  if(regional()){
+    // les modeles regionaux vivent dans les bundles de famille, pas dans le
+    // manifeste : on fabrique l'entree au lieu d'y charger 1292 lignes
+    if(!RIDX) return null;
+    const fam = nb ? state.type : state.type + "_" + state.band;
+    const f = RIDX.families[fam];
+    if(!f) return null;
+    const key = state.region + "_" + state.hemi;
+    if(!RIDX.regions.includes(key)) return null;
+    return {scope:"regional", region:state.region, hemi:state.hemi, type:state.type,
+            band: nb ? null : state.band, fam, key,
+            marker: markerOf(fam, key), qc: f.n_qc > 0, regional: true};
+  }
   const m = MAN.models.find(x=>
-    x.type===state.type &&
-    (nb || x.band===state.band) &&
-    (glob ? x.scope==="global" : (x.region===state.region && x.hemi===state.hemi)));
+    x.type===state.type && (nb || x.band===state.band) && x.scope==="global");
   return m||null;
 }
+
+/* un enregistrement de bundle a la forme attendue par render() */
+function recToCur(rec, marker){
+  const n = rec.m[0].length;
+  const l0 = Math.log(rec.a0), l1 = Math.log(rec.a1);
+  const age = Array.from({length:n}, (_,i)=>Math.exp(l0 + (l1-l0)*i/(n-1)));
+  return {age, marker, n:null, converged:true,
+          m:{mu:rec.m[0], sigma:rec.m[1]}, f:{mu:rec.f[0], sigma:rec.f[1]},
+          nu:rec.nu, tau:rec.tau, site_sd:rec.site_sd,
+          qc_ref:rec.qc_ref, qc_coef_mu:rec.qc_coef_mu, qc_coef_sigma:rec.qc_coef_sigma};
+}
 function drawControls(){
-  const types=[...new Set(MAN.models.map(m=>m.type))].sort();
-  const regions=["Whole brain",...MAN.regions];
+  const types=typesFor();
+  if(!types.includes(state.type)) state.type = types[0];
+  const regions=["Whole brain",...(RIDX
+    ? [...new Set(RIDX.regions.map(r=>r.replace(/_(lh|rh)$/,"")))].sort()
+    : MAN.regions)];
   const bs = bandsFor(state.type);
   const noBand = bs.length===0;
   if(!noBand && !bs.includes(state.band)) state.band = bs[0];
   document.getElementById("controls").innerHTML =
     sel("f-type","Measure",types.map(t=>[t,LABEL[t]||t]),state.type)+
     (noBand?"":sel("f-band","Band",bs.map(b=>[b,BANDLAB[b]||b]),state.band))+
-    (MAN.regions.length?sel("f-region","Region",regions.map(r=>[r,r]),state.region):"")+
+    (regions.length>1?sel("f-region","Region",regions.map(r=>[r,r]),state.region):"")+
     (state.region==="Whole brain"?"":sel("f-hemi","Hemisphere",[["lh","Left"],["rh","Right"]],state.hemi))+
     sel("f-sex","Sex",[["m","Male"],["f","Female"]],state.sex);
   const bind=(id,k)=>{const e=document.getElementById(id);
@@ -570,30 +606,50 @@ async function load(){
          render();return;}
   // le champ qualite decide de la variante affichee, comme pour le depot de profil
   const useQC = userQC()!==null && m.qc;
-  const file  = m.marker + (useQC?"_qc":"");
-  const j=await (await fetch(DATA+file+".json")).json();
+  let j, file;
+  if(m.regional){
+    let B;
+    try { B = await loadFamily(m.fam); }
+    catch(e){ CUR=null; put("<span>No regional models for this measure.</span>"); render(); return; }
+    // le run sans covariable de qualite est incomplet sur certaines familles,
+    // on retombe alors sur la variante ajustee plutot que de ne rien montrer
+    const qk = m.key + "_qc";
+    const pick = (useQC && B[qk]) ? qk : (B[m.key] ? m.key : (B[qk] ? qk : null));
+    if(!pick){ CUR=null; put("<span>No model for this region.</span>"); render(); return; }
+    const rec = B[pick];
+    file = m.marker + (pick === qk ? "_qc" : "");
+    m.fellBack = pick === qk && !useQC;
+    j = recToCur(rec, m.marker);
+  } else {
+    file = m.marker + (useQC?"_qc":"");
+    j = await (await fetch(DATA+file+".json")).json();
+  }
   CUR={...j,marker:m.marker,meta:m};
   const f=(v,d=2)=>v==null?"–":(+v).toFixed(d);
   const g=k=>m[useQC?k+"_qc":k];
   const vf=document.getElementById("variant");
   if(vf){
-    vf.textContent = useQC ? "quality-adjusted"
+    const shown = useQC || m.fellBack;
+    vf.textContent = shown
+      ? (m.fellBack ? "quality-adjusted (only variant)" : "quality-adjusted")
       : (userQC()!==null ? "unadjusted (no adjusted model)" : "unadjusted");
-    vf.classList.toggle("adj", useQC);
+    vf.classList.toggle("adj", shown);
     vf.title = useQC
       ? "The good-channel value you entered selects the model fitted with that covariate."
       : "Leave the good-channel field empty and the model fitted without it is used.";
   }
   put(
     `<span>model <b>${file}</b></span>`+
-    `<span>n controls <b>${j.n}</b></span>`+
+    (j.n!=null?`<span>n controls <b>${j.n}</b></span>`:"")+
     `<span>Shapiro p <b>${f(g("shapiro_p"),3)}</b></span>`+
     `<span>SMSE <b>${f(g("smse"))}</b></span>`+
     `<span>MSLL <b>${f(g("msll"))}</b></span>`+
     `<span>skewness <b>${f(g("skew"))}</b></span>`+
     `<span>kurtosis <b>${f(g("kurt"))}</b></span>`+
-    `<span class="softnote">${useQC?"quality-adjusted model"
+    `<span class="softnote">${(useQC||m.fellBack)?"quality-adjusted model"
        :(userQC()!==null?"no quality-adjusted model for this measure":"unadjusted model")}</span>`+
+    (m.regional?`<span class="softnote">per-region diagnostics are not published</span>`:"")+
+    (m.fellBack?`<span class="softnote">no unadjusted model for this measure, showing the adjusted one</span>`:"")+
     (j.converged?"":`<span class="softnote">did not converge within the iteration cap</span>`));
   if(typeof RAW_SUB !== "undefined" && RAW_SUB === "raw") updateRawFigure();
   render();
@@ -1313,7 +1369,8 @@ async function drawGroupMap(){
   for(const region of RIDX.regions){
     const marker = markerOf(fam, region);
     if(!COHORT.cols[marker]){ noCol++; continue; }
-    const rec = (useQC && B[region + "_qc"]) ? B[region + "_qc"] : B[region];
+    const qk = region + "_qc";
+    const rec = (useQC && B[qk]) ? B[qk] : (B[region] || B[qk]);
     if(!rec || rec.mean === undefined){ noModel++; continue; }
     const z = cohortZ(marker, rec, idx);
     const v = Array.prototype.filter.call(z, x => isFinite(x));
@@ -1547,6 +1604,7 @@ document.getElementById("tabs").onclick = e => {
 (async function init(){
   MAN=await (await fetch(DATA+"manifest.json")).json();
   loadNorm();
+  try { await loadIndex(); } catch(e){ /* pas de modeles regionaux publies */ }
   drawControls();await load();
   const q=document.getElementById("p-qc");
   if(q) q.oninput=()=>{clearTimeout(q._t);q._t=setTimeout(load,300);};
