@@ -293,6 +293,24 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
             </div>
             <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
             <div id="p-out"></div>
+        <strong style="margin-top:16px">A whole cohort from a file</strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               One row per subject, raw values. Needs an <code>age</code> column and a sex column
+               (<code>sex</code> with M/F, or <code>female_bin</code>); <code>ratio_ch_good</code> is
+               used when present. Diagnosis columns holding <code>true</code>/<code>false</code> become
+               groups. Measure columns are matched against the model names, anything else is ignored.
+               Every subject is placed on the chart below and the groups can be mapped in
+               <b>Brain maps</b>.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="co-file">Cohort file</label>
+                <input id="co-file" type="file" accept=".csv,.txt"></div>
+              <div class="ctl" id="co-wrap" style="display:none"><label for="co-group">Colour by</label>
+                <select id="co-group"></select></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="co-clear" class="ghost">Clear cohort</button></div>
+            </div>
+            <div id="co-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="co-legend" class="legend" style="margin:8px 0 0"></div>
       </div>
     </details>
   <div class="card">
@@ -403,9 +421,11 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       <div class="controls" style="margin-bottom:14px">
         <div class="ctl"><label for="bo-fam">Measure</label><select id="bo-fam"></select></div>
         <div class="ctl"><label for="bo-lim">Scale (&plusmn;z)</label>
-          <select id="bo-lim"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+          <select id="bo-lim"><option value="auto" selected>auto</option><option>1</option><option>2</option><option>4</option><option>5</option></select></div>
         <div class="ctl"><label for="bo-file">Profile file</label>
           <input id="bo-file" type="file" accept=".csv,.txt"></div>
+        <div class="ctl" id="bo-gwrap" style="display:none"><label for="bo-group">Group</label>
+          <select id="bo-group"></select></div>
       </div>
       <div id="bo-status" class="sub" style="font-size:13px;margin:0 0 12px"></div>
       <div id="bo-svg" style="width:100%"></div>
@@ -584,6 +604,17 @@ function render(){
   const curves=P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],CUR.nu,CUR.tau))));
   let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
   SUBJ.forEach(s=>{if(s.ok){lo=Math.min(lo,std_(s.value));hi=Math.max(hi,std_(s.value));}});
+  // la cohorte etend l'axe jusqu'a ses 1er et 99e centiles : quelques valeurs
+  // aberrantes ecraseraient la figure si on prenait les extremes
+  const CO = COHORT && COHORT.cols[CUR.marker] ? COHORT.cols[CUR.marker] : null;
+  let coClip = 0;
+  if(CO){
+    const v=[]; for(let i=0;i<COHORT.n;i++){
+      if(COHORT.sexF[i]===(state.sex==="f"?1:0) && isFinite(CO[i])) v.push(CO[i]); }
+    if(v.length){ v.sort((a,b)=>a-b);
+      lo=Math.min(lo,v[Math.floor(v.length*0.01)]);
+      hi=Math.max(hi,v[Math.min(v.length-1,Math.floor(v.length*0.99))]); }
+  }
   const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
   const a0=ages[0], a1=ages[n-1];
   const X=a=>M.l+(a-a0)/(a1-a0)*(W-M.l-M.r);
@@ -604,6 +635,28 @@ function render(){
   s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Age (years)</text>`;
   s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">`+
      (npc?`${CUR.marker} (measured units)`:"Standardised value (control SD)")+`</text>`;
+  if(CO){
+    const cls=cohortClass(), want=state.sex==="f"?1:0;
+    const pts=[];
+    for(let i=0;i<COHORT.n;i++){
+      if(COHORT.sexF[i]!==want) continue;
+      const v=CO[i], a=COHORT.age[i];
+      if(!isFinite(v)||!isFinite(a)||a<a0||a>a1) continue;
+      if(v<lo||v>hi){ coClip++; continue; }
+      const k=cls.of(i);
+      pts.push([X(a),Y(v),k]);
+    }
+    // les sujets sans diagnostic d'abord, pour que les groupes restent lisibles
+    pts.sort((p,q)=>(p[2]<0?0:1)-(q[2]<0?0:1));
+    pts.forEach(([x,y,k])=>{
+      const col = k>=0?catColor(k):OTHER();
+      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${col}"`
+        +` stroke="var(--surface-1)" stroke-width="1.2"`
+        +(k>=0?'':' opacity="0.5"')+`/>`;
+    });
+    if(coClip) s+=`<text x="${W-M.r}" y="${M.t+12}" text-anchor="end" font-size="11" fill="var(--muted)">`
+      +`${coClip} subject(s) off scale</text>`;
+  }
   SUBJ.forEach(p=>{if(!p.ok||p.sex!==state.sex)return;
     s+=`<circle cx="${X(p.age).toFixed(1)}" cy="${Y(std_(p.value)).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
   s+=`<line id="cross" x1="0" y1="${M.t}" x2="0" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
@@ -908,6 +961,263 @@ document.getElementById("ct-tabs").onclick = e => {
 };
 
 
+/* ---- cohorte : un fichier large, une ligne par sujet ------------------- */
+let COHORT = null;
+
+/* Teintes de serie, ordre fixe, jamais recyclees. Le bleu du nuancier est
+   deja pris par la trajectoire et ses bandes, donc on demarre a l'orange :
+   orange, aqua, violet. Ce triplet passe toutes les portes en tout-contre-tous
+   (mode sombre : CVD dE 9.4, vision normale 24.6, contraste >= 3:1 ; mode clair :
+   CVD 9.2, vision normale 27.6, l'aqua a 2.74 etant couvert par la legende
+   nommee). Au-dela de trois groupes on replie sur "Other". */
+const CAT = {
+  light: ["#eb6834","#1baf7a","#4a3aa7"],
+  dark:  ["#d95926","#199e70","#9085e9"]
+};
+const CAT_MAX = 3;
+const catColor = i => (DARK() ? CAT.dark : CAT.light)[i % CAT.light.length];
+const OTHER = () => DARK() ? "#6b6a64" : "#9b9a93";
+
+const isBool = v => /^(true|false|t|f|yes|no)$/i.test(v.trim());
+const asBool = v => /^(true|t|yes)$/i.test(v.trim());
+
+async function loadCohort(file){
+  const st = t => document.getElementById("co-status").innerHTML = t;
+  await loadNorm();
+  st("Reading…");
+  const rd = file.stream().pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "", head = null, iAge = -1, iSex = -1, iFem = -1, iQC = -1;
+  let marks = [], groups = [], acc = null, n = 0, sep = ",";
+
+  const take = line => {
+    if(!line) return;
+    if(head === null){
+      sep = (line.match(/;/g) || []).length > (line.match(/,/g) || []).length ? ";" : ",";
+      head = line.split(sep).map(x => x.trim().replace(/^"|"$/g, ""));
+      head.forEach((h, i) => {
+        const l = h.toLowerCase();
+        if(l === "age") iAge = i;
+        else if(l === "sex") iSex = i;
+        else if(l === "female_bin" || l === "female") iFem = i;
+        else if(l === "ratio_ch_good") iQC = i;
+        else if(NORM[h]) marks.push([h, i]);
+      });
+      acc = {age: [], sex: [], qc: [], g: {}, v: {}};
+      marks.forEach(([m]) => acc.v[m] = []);
+      return;
+    }
+    const c = line.split(sep);
+    if(c.length < head.length - 2) return;
+    // premiere ligne de donnees : les colonnes booleennes deviennent des groupes
+    if(n === 0){
+      head.forEach((h, i) => {
+        const raw = (c[i] || "").trim();
+        if(raw && isBool(raw) && i !== iAge && i !== iSex){ groups.push([h, i]); acc.g[h] = []; }
+      });
+    }
+    acc.age.push(parseFloat(c[iAge]));
+    acc.sex.push(iSex >= 0 ? ((c[iSex] || "").trim().toLowerCase().startsWith("f") ? 1 : 0)
+                           : (iFem >= 0 ? (parseFloat(c[iFem]) ? 1 : 0) : 0));
+    acc.qc.push(iQC >= 0 ? parseFloat(c[iQC]) : NaN);
+    groups.forEach(([h, i]) => acc.g[h].push(asBool(c[i] || "false") ? 1 : 0));
+    marks.forEach(([m, i]) => acc.v[m].push(parseFloat(c[i])));
+    n++;
+  };
+
+  for(;;){
+    const {value, done} = await rd.read();
+    if(done) break;
+    buf += value;
+    let k;
+    while((k = buf.indexOf("\n")) >= 0){ take(buf.slice(0, k).replace(/\r$/, "")); buf = buf.slice(k + 1); }
+    if(n && n % 500 === 0) st(`Reading… ${n} subjects`);
+  }
+  take(buf.replace(/\r$/, ""));
+
+  if(!head || iAge < 0){
+    st('<span class="flag">No <code>age</code> column found.</span>'); return; }
+  if(!marks.length){
+    st('<span class="flag">No column matched a model name.</span>'); return; }
+
+  const cols = {};
+  marks.forEach(([m]) => cols[m] = Float32Array.from(acc.v[m]));
+  const G = {};
+  groups.forEach(([h]) => { const a = Uint8Array.from(acc.g[h]);
+                            const c = a.reduce((x, y) => x + y, 0);
+                            if(c) G[h] = {flag: a, n: c}; });
+  const order = Object.keys(G).sort((a, b) => G[b].n - G[a].n);
+  COHORT = {n, age: Float32Array.from(acc.age), sexF: Uint8Array.from(acc.sex),
+            qc: Float32Array.from(acc.qc), cols, groups: G, order,
+            hasSex: iSex >= 0 || iFem >= 0};
+
+  const gs = document.getElementById("co-group");
+  gs.innerHTML = '<option value="">All diagnoses</option>'
+    + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
+  document.getElementById("co-wrap").style.display = "";
+  const bg = document.getElementById("bo-group");
+  if(bg){ bg.innerHTML = order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
+          document.getElementById("bo-gwrap").style.display = order.length ? "" : "none"; }
+
+  const multi = order.length
+    ? Array.from({length: n}, (_, i) => order.reduce((x, g) => x + G[g].flag[i], 0)).filter(x => x > 1).length
+    : 0;
+  st(`<b>${n}</b> subjects, <b>${marks.length}</b> measures, <b>${order.length}</b> diagnosis column(s).`
+     + (COHORT.hasSex ? "" : ' <span class="flag">No sex column: all treated as male.</span>')
+     + (multi ? ` ${multi} subject(s) carry more than one diagnosis; the chart colours each by its largest group.` : ""));
+  cohortLegend();
+  render();
+  if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
+}
+
+/* groupe affiche pour chaque sujet : le plus grand de ceux qui sont vrais */
+function cohortClass(){
+  const sel = document.getElementById("co-group").value;
+  const {order, groups, n} = COHORT;
+  if(sel) return {keys: [sel], of: i => groups[sel].flag[i] ? 0 : -1};
+  const keys = order.slice(0, CAT_MAX);
+  return {keys, of: i => { for(let k = 0; k < keys.length; k++) if(groups[keys[k]].flag[i]) return k;
+                           return order.some(g => groups[g].flag[i]) ? -2 : -1; }};
+}
+function cohortLegend(){
+  const el = document.getElementById("co-legend");
+  if(!COHORT || !COHORT.order.length){ el.innerHTML = ""; return; }
+  const {keys} = cohortClass();
+  const rest = COHORT.order.length - keys.length;
+  el.innerHTML = keys.map((g, k) =>
+      `<span><i style="background:${catColor(k)};border-radius:50%;width:9px;height:9px"></i>${g} (${COHORT.groups[g].n})</span>`).join("")
+    + (rest > 0 ? `<span><i style="background:${OTHER()};border-radius:50%;width:9px;height:9px"></i>other diagnosis (${rest} column${rest > 1 ? "s" : ""})</span>` : "")
+    + `<span><i style="background:${OTHER()};opacity:.45;border-radius:50%;width:9px;height:9px"></i>no diagnosis flag</span>`;
+}
+
+/* z d'une colonne de la cohorte contre un enregistrement de modele */
+function cohortZ(marker, rec, idx){
+  const v = COHORT.cols[marker];
+  if(!v) return null;
+  const qcOn = rec.qc_ref !== undefined;
+  const out = new Float64Array(idx.length).fill(NaN);
+  for(let k = 0; k < idx.length; k++){
+    const i = idx[k], raw = v[i], age = COHORT.age[i];
+    if(!isFinite(raw) || !isFinite(age) || age < rec.a0 || age > rec.a1) continue;
+    const {mu, sigma} = paramsAt(rec, age, COHORT.sexF[i] ? "f" : "m");
+    let dmu = 0, fsg = 1;
+    if(qcOn && isFinite(COHORT.qc[i])){ const d = COHORT.qc[i] - rec.qc_ref;
+      dmu = (rec.qc_coef_mu || 0) * d; fsg = Math.exp((rec.qc_coef_sigma || 0) * d); }
+    const y = (raw - rec.mean) / rec.std;
+    out[k] = shashZ(y, mu + calOf(marker) + dmu, sigma * fsg, rec.nu, rec.tau);
+  }
+  return out;
+}
+
+document.getElementById("co-file").onchange = e => {
+  const f = e.target.files[0]; if(f) loadCohort(f);
+};
+document.getElementById("co-group").onchange = () => { cohortLegend(); render(); };
+document.getElementById("co-clear").onclick = () => {
+  COHORT = null;
+  document.getElementById("co-status").innerHTML = "";
+  document.getElementById("co-legend").innerHTML = "";
+  document.getElementById("co-wrap").style.display = "none";
+  const w = document.getElementById("bo-gwrap"); if(w) w.style.display = "none";
+  document.getElementById("co-file").value = "";
+  render();
+};
+
+/* Benjamini-Hochberg : q-valeurs, dans l'ordre des p fournis */
+function bhq(p){
+  const n = p.length, o = p.map((v, i) => i).sort((a, b) => p[a] - p[b]);
+  const q = new Array(n); let m = 1;
+  for(let k = n - 1; k >= 0; k--){ m = Math.min(m, p[o[k]] * n / (k + 1)); q[o[k]] = m; }
+  return q;
+}
+
+/* carte d'un groupe : z moyen contre le modele normatif, teste contre 0 */
+async function drawGroupMap(){
+  const st  = t => document.getElementById("bo-status").innerHTML = t;
+  const svg = document.querySelector("#bo-svg svg");
+  const leg = document.getElementById("bo-legend");
+  const out = document.getElementById("bo-out");
+  if(!svg) return;
+  const P = DARK() ? POLES.dark : POLES.light;
+  svg.querySelectorAll("path.reg").forEach(p => {
+    p.style.fill = P.absent; p.style.stroke = ""; p.style.strokeWidth = ""; });
+  leg.style.display = "none"; out.innerHTML = "";
+
+  await loadIndex();
+  const grp = document.getElementById("bo-group").value;
+  const fam = document.getElementById("bo-fam").value;
+  if(!grp){ st("Select a group."); return; }
+  const flag = COHORT.groups[grp].flag;
+  const idx = []; for(let i = 0; i < COHORT.n; i++) if(flag[i]) idx.push(i);
+
+  let B;
+  try { B = await loadFamily(fam); }
+  catch(e){ st('<span class="flag">No regional models for this measure.</span>'); return; }
+
+  const useQC = Array.prototype.some.call(COHORT.qc, v => isFinite(v));
+  const rows = [];
+  let noCol = 0, noModel = 0, noShape = 0;
+  for(const region of RIDX.regions){
+    const marker = markerOf(fam, region);
+    if(!COHORT.cols[marker]){ noCol++; continue; }
+    const rec = (useQC && B[region + "_qc"]) ? B[region + "_qc"] : B[region];
+    if(!rec || rec.mean === undefined){ noModel++; continue; }
+    const z = cohortZ(marker, rec, idx);
+    const v = Array.prototype.filter.call(z, x => isFinite(x));
+    if(v.length < 20) continue;
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    const sd = Math.sqrt(v.reduce((a, b) => a + (b - m) * (b - m), 0) / (v.length - 1));
+    const t = sd > 0 ? m / (sd / Math.sqrt(v.length)) : 0;
+    rows.push({region, marker, mean: m, sd, n: v.length, p: 2 * (1 - pnorm(Math.abs(t)))});
+  }
+  if(!rows.length){
+    st('<span class="flag">No region of this measure is present in the cohort file.</span> '
+       + `Expected columns such as <code>${markerOf(fam, RIDX.regions[0])}</code>.`);
+    return;
+  }
+  const q = bhq(rows.map(r => r.p));
+  rows.forEach((r, k) => r.q = q[k]);
+
+  const sel = document.getElementById("bo-lim").value;
+  const lim = sel === "auto"
+    ? Math.max(0.05, Math.ceil(Math.max(...rows.map(r => Math.abs(r.mean))) * 20) / 20)
+    : parseFloat(sel);
+
+  let drawn = 0;
+  rows.forEach(r => {
+    const el = svg.getElementById(r.region);
+    if(!el){ noShape++; return; }
+    el.style.fill = zColor(r.mean, lim);
+    if(r.q < 0.05){ el.style.stroke = DARK() ? "#fff" : "#111"; el.style.strokeWidth = "3"; }
+    el.querySelector("title")?.remove();
+    const ti = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    ti.textContent = `${r.region}  mean z = ${r.mean.toFixed(3)}  (n = ${r.n}, q = ${r.q.toExponential(1)})`;
+    el.appendChild(ti); drawn++;
+  });
+
+  const nsig = rows.filter(r => r.q < 0.05).length;
+  st(`<b>${grp}</b>, n = <b>${idx.length}</b>. Mean z against the normative model over `
+     + `<b>${rows.length}</b> regions, <b>${nsig}</b> of them below q = 0.05 after FDR. `
+     + (useQC ? "Quality-adjusted models used. " : "No quality column: unadjusted models used. ")
+     + (noCol ? `${noCol} region(s) absent from the file. ` : "")
+     + (noModel ? `${noModel} without a model. ` : "")
+     + (noShape ? `${noShape} region(s) have no shape in the atlas and are not drawn. ` : ""));
+
+  document.getElementById("bo-bar").style.background = legendGradient(lim);
+  document.getElementById("bo-lo").textContent = (-lim).toFixed(2);
+  document.getElementById("bo-hi").textContent = "+" + lim.toFixed(2);
+  leg.style.display = "block";
+
+  rows.sort((a, b) => Math.abs(b.mean) - Math.abs(a.mean));
+  out.innerHTML =
+    `<table><thead><tr><th>Region</th><th>n</th><th>Mean z</th><th>q (FDR)</th></tr></thead><tbody>`
+    + rows.slice(0, 12).map(r => `<tr><td>${r.region}</td><td>${r.n}</td>`
+        + `<td>${r.mean.toFixed(3)}</td><td>${r.q < 1e-4 ? r.q.toExponential(1) : r.q.toFixed(4)}</td></tr>`).join("")
+    + `</tbody></table><p class="sub" style="font-size:12px;margin-top:8px">`
+    + `The twelve largest mean deviations, of ${rows.length} regions. Outlined regions survive `
+    + `Benjamini-Hochberg at q &lt; 0.05; the test is a normal approximation, which is close at these `
+    + `sample sizes. Grey means no column, no model, or no shape in the atlas.</p>`;
+}
+
 /* ---- carte cerebrale construite a partir des donnees deposees ---------- */
 const RDIR = DATA + "regional/";
 const BANDS_R = ["delta","theta","alpha","beta","gamma","all"];
@@ -973,7 +1283,8 @@ async function initOwnMap(){
   sel.innerHTML = Object.keys(idx.families).sort()
     .map(f => `<option value="${f}">${famLabel(f)}</option>`).join("");
   document.getElementById("bo-svg").innerHTML = await loadAtlas();
-  ["bo-fam","bo-lim"].forEach(id => document.getElementById(id).onchange = drawOwnMap);
+  ["bo-fam","bo-lim","bo-group"].forEach(id => { const e = document.getElementById(id);
+    if(e) e.onchange = drawOwnMap; });
   document.getElementById("bo-file").onchange = async e => {
     const f = e.target.files[0]; if(!f) return;
     const txt = await f.text();
@@ -993,6 +1304,7 @@ async function initOwnMap(){
 }
 
 async function drawOwnMap(){
+  if(COHORT && COHORT.order.length) return drawGroupMap();
   const st = t => document.getElementById("bo-status").innerHTML = t;
   const svg = document.querySelector("#bo-svg svg");
   const leg = document.getElementById("bo-legend");
