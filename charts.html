@@ -1229,7 +1229,23 @@ function cohortZ(marker, rec, idx){
 async function loadDataFile(f){
   ["p-status","co-status","p-out","co-legend"].forEach(i => {
     const e = document.getElementById(i); if(e) e.innerHTML = ""; });
-  const head = (await f.slice(0, 1 << 16).text()).split(/\r?\n/)[0] || "";
+  // l'en-tete d'un export clinique peut faire plusieurs centaines de kilo-octets :
+  // on lit par tranches jusqu'au premier saut de ligne plutot que de parier
+  // sur une taille fixe, sinon la colonne age passe apres la troncature
+  let head = "";
+  {
+    const rd = f.stream().pipeThrough(new TextDecoderStream()).getReader();
+    for(;;){
+      const {value, done} = await rd.read();
+      if(done) break;
+      head += value;
+      const k = head.indexOf("\n");
+      if(k >= 0){ head = head.slice(0, k); break; }
+      if(head.length > 8e6) break;
+    }
+    rd.cancel();
+    head = head.replace(/\r$/, "");
+  }
   const sep = (head.match(/;/g) || []).length > (head.match(/,/g) || []).length ? ";" : ",";
   const cols = splitCSV(head, sep).map(x => x.trim().toLowerCase());
   const wide = cols.includes("age") && cols.length > 4;
