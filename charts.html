@@ -362,7 +362,11 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     </section>
 
     <section class="panel" id="tab-maps" hidden>
-<div class="card">
+      <nav class="subtabs" id="bm-tabs">
+        <button data-bm="paper" class="on">Paper figures</button>
+        <button data-bm="own">Your own map</button>
+      </nav>
+      <div class="subpanel" id="bm-paper"><div class="card">
       <strong>Brain map explorer</strong>
       <p class="sub" style="margin:6px 0 14px;font-size:13px">
          Individual-level deviations from the normative trajectories across conditions and
@@ -387,6 +391,32 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
         <figcaption id="bm-cap" class="sub" style="margin-top:10px;font-size:13px"></figcaption>
       </figure>
     </div>
+      </div>
+      <div class="subpanel" id="bm-own" hidden>
+<div class="card">
+      <strong>Build a map from your own data</strong>
+      <p class="sub" style="margin:6px 0 14px;font-size:13px">
+         Upload a profile with regional measure names and the page places every
+         region on its own normative trajectory, then colours the cortex by the
+         resulting z&#8209;score. Set the age and sex in <b>Brain charts</b> first;
+         the good&#8209;channel field there selects the model variant here too.</p>
+      <div class="controls" style="margin-bottom:14px">
+        <div class="ctl"><label for="bo-fam">Measure</label><select id="bo-fam"></select></div>
+        <div class="ctl"><label for="bo-lim">Scale (&plusmn;z)</label>
+          <select id="bo-lim"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+        <div class="ctl"><label for="bo-file">Profile file</label>
+          <input id="bo-file" type="file" accept=".csv,.txt"></div>
+      </div>
+      <div id="bo-status" class="sub" style="font-size:13px;margin:0 0 12px"></div>
+      <div id="bo-svg" style="width:100%"></div>
+      <div id="bo-legend" style="display:none;margin:10px 0 0">
+        <div id="bo-bar" style="height:10px;border-radius:5px"></div>
+        <div class="sub" style="display:flex;justify-content:space-between;font-size:12px;margin:4px 0 0;max-width:none">
+          <span id="bo-lo"></span><span>0</span><span id="bo-hi"></span></div>
+      </div>
+      <div id="bo-out"></div>
+    </div>
+      </div>
     </section>
 
     <section class="panel" id="tab-io" hidden>
@@ -413,6 +443,7 @@ const LABEL = {periodic:"Periodic power", connectivity:"Connectivity (wPLI)",
 const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8–12 Hz",
                  beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
 let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null, CAL={};
+let PROFILE=null;            // {marqueur: valeur brute} du dernier fichier depose
 
 /* ---- variante ajustee sur la qualite ----------------------------------
    Le champ decide : vide -> modele sans covariable, calibre pour quelqu'un
@@ -687,10 +718,12 @@ async function runProfile(file){
   if(iM<0||iV<0){iM=0;iV=1;start=0;}                       // sans en-tête : 2 colonnes
   const QCV=userQC();
   const res=[], unknown=[], noConst=[], outOfRange=[];
+  PROFILE={};
   for(let k=start;k<lines.length;k++){
     const c=lines[k].split(/[,;\t]/).map(x=>x.trim());
     const marker=c[iM], raw=parseFloat(c[iV]);
     if(!marker||!isFinite(raw)) continue;
+    PROFILE[marker]=raw;                 // garde tout, y compris le regional
     const {rec, adj}=recFor(B, marker, QCV);
     if(!rec){unknown.push(marker);continue;}
     const np=NORM[marker];
@@ -873,6 +906,183 @@ document.getElementById("ct-tabs").onclick = e => {
   document.getElementById("ct-raw").hidden   = RAW_SUB !== "raw";
   if(RAW_SUB === "raw") updateRawFigure(); else render();
 };
+
+
+/* ---- carte cerebrale construite a partir des donnees deposees ---------- */
+const RDIR = DATA + "regional/";
+const BANDS_R = ["delta","theta","alpha","beta","gamma","all"];
+let RIDX = null, RFAM = {}, ATLAS = null, BO_SEEN = false;
+
+/* famille + region -> nom du marqueur tel qu'il est nomme dans les modeles */
+function markerOf(fam, region){
+  const i = fam.lastIndexOf("_"), band = i > 0 ? fam.slice(i + 1) : "";
+  return BANDS_R.includes(band)
+    ? `${region}_${band}_${fam.slice(0, i)}`
+    : `${region}_${fam}`;
+}
+function famLabel(fam){
+  const i = fam.lastIndexOf("_"), band = i > 0 ? fam.slice(i + 1) : "";
+  return BANDS_R.includes(band)
+    ? `${LABEL[fam.slice(0, i)] || fam.slice(0, i)} — ${BANDLAB[band] || band}`
+    : (LABEL[fam] || fam);
+}
+
+/* bleu <-> gris <-> rouge : paire divergente, point neutre gris, jamais d'arc-en-ciel */
+const DARK = () => matchMedia("(prefers-color-scheme: dark)").matches;
+const POLES = {
+  light: {neg:[42,120,214],  mid:[240,239,236], pos:[227,73,72],  absent:"#e7e6e1"},
+  dark:  {neg:[57,135,229],  mid:[56,56,53],    pos:[230,103,103], absent:"#2c2c2a"}
+};
+function zColor(z, lim){
+  const P = DARK() ? POLES.dark : POLES.light;
+  const t = Math.max(-1, Math.min(1, z / lim));
+  const end = t < 0 ? P.neg : P.pos, a = Math.abs(t);
+  const c = P.mid.map((m, k) => Math.round(m + (end[k] - m) * a));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function legendGradient(lim){
+  const st = [];
+  for(let k = 0; k <= 10; k++){
+    const z = -lim + (2 * lim) * k / 10;
+    st.push(`${zColor(z, lim)} ${k * 10}%`);
+  }
+  return `linear-gradient(90deg, ${st.join(",")})`;
+}
+
+async function loadIndex(){
+  if(RIDX) return RIDX;
+  RIDX = await (await fetch(RDIR + "index.json")).json();
+  return RIDX;
+}
+async function loadFamily(fam){
+  if(RFAM[fam]) return RFAM[fam];
+  const r = await fetch(RDIR + fam + ".json");
+  if(!r.ok) throw new Error("bundle absent : " + fam);
+  RFAM[fam] = (await r.json()).markers;
+  return RFAM[fam];
+}
+async function loadAtlas(){
+  if(ATLAS) return ATLAS;
+  ATLAS = await (await fetch("static/images/dk_atlas.svg")).text();
+  return ATLAS;
+}
+
+async function initOwnMap(){
+  const idx = await loadIndex();
+  const sel = document.getElementById("bo-fam");
+  sel.innerHTML = Object.keys(idx.families).sort()
+    .map(f => `<option value="${f}">${famLabel(f)}</option>`).join("");
+  document.getElementById("bo-svg").innerHTML = await loadAtlas();
+  ["bo-fam","bo-lim"].forEach(id => document.getElementById(id).onchange = drawOwnMap);
+  document.getElementById("bo-file").onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text();
+    const lines = txt.trim().split(/\r?\n/).filter(Boolean);
+    let head = lines[0].split(/[,;\t]/).map(x => x.trim().toLowerCase());
+    let iM = head.indexOf("marker"), iV = head.indexOf("value"), start = 1;
+    if(iM < 0 || iV < 0){ iM = 0; iV = 1; start = 0; }
+    PROFILE = {};
+    for(let k = start; k < lines.length; k++){
+      const c = lines[k].split(/[,;\t]/).map(x => x.trim());
+      const v = parseFloat(c[iV]);
+      if(c[iM] && isFinite(v)) PROFILE[c[iM]] = v;
+    }
+    drawOwnMap();
+  };
+  drawOwnMap();
+}
+
+async function drawOwnMap(){
+  const st = t => document.getElementById("bo-status").innerHTML = t;
+  const svg = document.querySelector("#bo-svg svg");
+  const leg = document.getElementById("bo-legend");
+  const out = document.getElementById("bo-out");
+  if(!svg) return;
+
+  const P = DARK() ? POLES.dark : POLES.light;
+  svg.querySelectorAll("path.reg").forEach(p => p.style.fill = P.absent);
+  leg.style.display = "none"; out.innerHTML = "";
+
+  if(!PROFILE || !Object.keys(PROFILE).length){
+    st("Upload a profile file to colour the map."); return; }
+  const age = parseFloat(document.getElementById("p-age").value);
+  const sex = document.getElementById("p-sex").value;
+  if(!isFinite(age)){
+    st('<span class="flag">Set the age in Brain charts before building a map.</span>'); return; }
+
+  const fam = document.getElementById("bo-fam").value;
+  const lim = parseFloat(document.getElementById("bo-lim").value);
+  const qc  = userQC();
+  let B;
+  try { B = await loadFamily(fam); }
+  catch(e){ st('<span class="flag">No regional models for this measure.</span>'); return; }
+
+  const rows = [], drawn = new Set();
+  let noData = 0, noModel = 0, outRange = 0, adj = 0, noShape = 0;
+  for(const region of RIDX.regions){
+    const marker = markerOf(fam, region);
+    const raw = PROFILE[marker];
+    if(raw === undefined){ noData++; continue; }
+    const useQC = qc !== null && B[region + "_qc"];
+    const rec = useQC ? B[region + "_qc"] : B[region];
+    if(!rec || rec.mean === undefined){ noModel++; continue; }
+    if(age < rec.a0 || age > rec.a1){ outRange++; continue; }
+    if(useQC) adj++;
+    const {mu, sigma} = paramsAt(rec, age, sex);
+    const sh = qcShift(rec, qc);
+    const v  = (raw - rec.mean) / rec.std;
+    const z  = shashZ(v, mu + calOf(marker) + sh.dmu, sigma * sh.fsg, rec.nu, rec.tau);
+    if(!isFinite(z)) continue;
+    rows.push({region, marker, raw, z, centile: pnorm(z) * 100});
+    const el = svg.getElementById(region);
+    if(el){ el.style.fill = zColor(z, lim);
+            el.querySelector("title")?.remove();
+            const t = document.createElementNS("http://www.w3.org/2000/svg","title");
+            t.textContent = `${region}  z = ${z.toFixed(2)}  (centile ${(pnorm(z)*100).toFixed(1)})`;
+            el.appendChild(t);
+            drawn.add(region); }
+    else noShape++;
+  }
+
+  if(!rows.length){
+    st('<span class="flag">No region of this measure was found in your file.</span> '
+       + `Expected names such as <code>${markerOf(fam, RIDX.regions[0])}</code>.`);
+    return;
+  }
+  const ext = rows.filter(r => Math.abs(r.z) > 2).length;
+  st(`<b>${rows.length}</b> regions placed, <b>${ext}</b> beyond |z| = 2 `
+     + `(expected in a typical subject: ${(rows.length * 0.0455).toFixed(0)}). `
+     + (adj ? `Quality-adjusted models used (${adj}). ` : "Quality field empty: unadjusted models used. ")
+     + (noData ? `${noData} region(s) absent from your file. ` : "")
+     + (noModel ? `${noModel} without a model. ` : "")
+     + (outRange ? `${outRange} outside the age range. ` : "")
+     + (noShape ? `${noShape} region(s) have no shape in the atlas and are not drawn. ` : ""));
+
+  document.getElementById("bo-bar").style.background = legendGradient(lim);
+  document.getElementById("bo-lo").textContent = "−" + lim;
+  document.getElementById("bo-hi").textContent = "+" + lim;
+  leg.style.display = "block";
+
+  rows.sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
+  out.innerHTML =
+    `<table><thead><tr><th>Region</th><th>Value</th><th>z</th><th>Centile</th></tr></thead><tbody>`
+    + rows.slice(0, 12).map(r => `<tr><td>${r.region}</td><td>${r.raw}</td>`
+        + `<td>${r.z.toFixed(2)}</td><td>${r.centile.toFixed(1)}</td></tr>`).join("")
+    + `</tbody></table><p class="sub" style="font-size:12px;margin-top:8px">`
+    + `The twelve largest deviations, of ${rows.length} regions. Grey means no value, `
+    + `no model, or no shape in the atlas.</p>`;
+}
+
+document.getElementById("bm-tabs").onclick = e => {
+  const b = e.target.closest("button[data-bm]");
+  if(!b) return;
+  document.querySelectorAll("#bm-tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.getElementById("bm-paper").hidden = b.dataset.bm !== "paper";
+  document.getElementById("bm-own").hidden   = b.dataset.bm !== "own";
+  if(b.dataset.bm === "own" && !BO_SEEN){ BO_SEEN = true; initOwnMap(); }
+  else if(b.dataset.bm === "own") drawOwnMap();
+};
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if(BO_SEEN) drawOwnMap(); });
 
 document.getElementById("tabs").onclick = e => {
   const b = e.target.closest("button[data-tab]");
