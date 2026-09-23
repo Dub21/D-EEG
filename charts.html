@@ -58,7 +58,7 @@ svg{display:block;width:100%;height:auto;min-width:560px}
   padding:9px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
-.app{display:block;min-height:100vh}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:100vh}
 .side{background:var(--surface-1);border-right:1px solid var(--border);padding:18px 0;
       position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto}
 .brand{font-weight:600;font-size:15px;padding:0 18px 16px;border-bottom:1px solid var(--border);margin-bottom:6px}
@@ -88,7 +88,16 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 #tab-io .grpbody a{display:block;padding:3px 0}
 .grpbody a:hover{text-decoration:underline}
 .grpbody table{font-size:11px}
-.main{padding:20px 26px 64px;max-width:1180px;margin:0 auto}
+.main{padding:20px 26px 64px;max-width:1180px;margin:0 auto;min-width:0}
+.side.right{background:var(--surface-1);border-left:1px solid var(--border);
+  padding:18px 0 40px;position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
+.side.right .grp{border:none;border-bottom:1px solid var(--border);border-radius:0;margin:0;background:none}
+.sidehead{padding:0 18px 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:2px}
+.side.right .grpbody .controls{flex-direction:column;gap:10px}
+.side.right .grpbody input,.side.right .grpbody select{width:100%}
+.side.right .grpbody .sub{max-width:none}
+.side.right .legend{flex-direction:column;align-items:flex-start;gap:5px}
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 20px}
 .tabs button{appearance:none;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;
   padding:16px 14px;font:inherit;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
@@ -103,6 +112,8 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .subtabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
 .subpanel[hidden]{display:none}
 @media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side.right{position:static;max-height:none;border-left:none;border-top:1px solid var(--border)}
   .tabs{grid-template-columns:repeat(2,1fr)}
   .main{padding:18px}
 }
@@ -267,52 +278,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       </nav>
 
       <div class="subpanel" id="ct-model">
-<details class="grp" open>
-      <summary>Upload data</summary>
-      <div class="grpbody">
-        <strong>Subject</strong>
-              <p class="sub" style="margin:6px 0 10px;font-size:13px">
-                 Age and sex of the person whose data you are placing. Used by the file-based
-                 modes in <b>Input / output</b>.</p>
-              <div class="controls" style="margin-bottom:0">
-                <div class="ctl"><label for="p-age">Age (years)</label>
-                  <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
-                <div class="ctl"><label for="p-sex">Sex</label>
-                  <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
-                <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
-                  <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
-              </div>
-        <strong>Full profile from a file</strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
-               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
-               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="p-file">File</label>
-                <input id="p-file" type="file" accept=".csv,.txt"></div>
-            </div>
-            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="p-out"></div>
-        <strong style="margin-top:16px">A whole cohort from a file</strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               One row per subject, raw values. Needs an <code>age</code> column and a sex column
-               (<code>sex</code> with M/F, or <code>female_bin</code>); <code>ratio_ch_good</code> is
-               used when present. Diagnosis columns holding <code>true</code>/<code>false</code> become
-               groups. Measure columns are matched against the model names, anything else is ignored.
-               Every subject is placed on the chart below and the groups can be mapped in
-               <b>Brain maps</b>.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="co-file">Cohort file</label>
-                <input id="co-file" type="file" accept=".csv,.txt"></div>
-              <div class="ctl" id="co-wrap" style="display:none"><label for="co-group">Colour by</label>
-                <select id="co-group"></select></div>
-              <div class="ctl"><label>&nbsp;</label>
-                <button id="co-clear" class="ghost">Clear cohort</button></div>
-            </div>
-            <div id="co-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="co-legend" class="legend" style="margin:8px 0 0"></div>
-      </div>
-    </details>
+
   <div class="card">
       <div class="chartwrap">
         <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
@@ -339,28 +305,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
         <div id="out"></div>
       </div>
 
-<details class="grp">
-      <summary>Calibration</summary>
-      <div class="grpbody">
-        <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               The published curves are those of the average training site. Sites differ, so a
-               recording from a new site carries an unknown offset. Upload controls from your own
-               site and the page estimates that offset and shifts the curves accordingly.
-               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
-               per measure. The estimate is shrunk toward zero when few controls are available, so
-               a small sample moves the curves little rather than moving them wrongly.
-               Bethlehem et al. recommend at least 100 controls for this step.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="c-file">Controls file</label>
-                <input id="c-file" type="file" accept=".csv,.txt"></div>
-              <div class="ctl"><label>&nbsp;</label>
-                <button id="c-clear" class="ghost">Clear calibration</button></div>
-            </div>
-            <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="c-out"></div>
-      </div>
-    </details>
+
       </div>
 
       <div class="subpanel" id="ct-raw" hidden>
@@ -414,16 +359,14 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 <div class="card">
       <strong>Build a map from your own data</strong>
       <p class="sub" style="margin:6px 0 14px;font-size:13px">
-         Upload a profile with regional measure names and the page places every
-         region on its own normative trajectory, then colours the cortex by the
-         resulting z&#8209;score. Set the age and sex in <b>Brain charts</b> first;
-         the good&#8209;channel field there selects the model variant here too.</p>
+         Drop a profile or a cohort file in the panel on the right and the page places
+         every region on its own normative trajectory, then colours the cortex by the
+         resulting z&#8209;score. A cohort is mapped group by group, as the mean deviation
+         from the normative model, with regions surviving FDR outlined.</p>
       <div class="controls" style="margin-bottom:14px">
         <div class="ctl"><label for="bo-fam">Measure</label><select id="bo-fam"></select></div>
         <div class="ctl"><label for="bo-lim">Scale (&plusmn;z)</label>
           <select id="bo-lim"><option value="auto" selected>auto</option><option>1</option><option>2</option><option>4</option><option>5</option></select></div>
-        <div class="ctl"><label for="bo-file">Profile file</label>
-          <input id="bo-file" type="file" accept=".csv,.txt"></div>
         <div class="ctl" id="bo-gwrap" style="display:none"><label for="bo-group">Group</label>
           <select id="bo-group"></select></div>
       </div>
@@ -451,6 +394,77 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     
     </section>
   </main>
+  <aside class="side right">
+    <div class="sidehead">Your data</div>
+<details class="grp" open>
+      <summary>Subject and files</summary>
+      <div class="grpbody">
+        <strong>Subject</strong>
+              <p class="sub" style="margin:6px 0 10px;font-size:13px">
+                 Only needed for a single-subject profile. A cohort file carries its own
+                 age and sex per subject.</p>
+              <div class="controls" style="margin-bottom:0">
+                <div class="ctl"><label for="p-age">Age (years)</label>
+                  <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
+                <div class="ctl"><label for="p-sex">Sex</label>
+                  <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+                <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
+                  <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
+              </div>
+        <strong>Full profile from a file</strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
+               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
+               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="p-file">File</label>
+                <input id="p-file" type="file" accept=".csv,.txt"></div>
+            </div>
+            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="p-out"></div>
+        <strong style="margin-top:16px">A whole cohort from a file</strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               One row per subject, raw values. Needs an <code>age</code> column and a sex column
+               (<code>sex</code> with M/F, or <code>female_bin</code>); <code>ratio_ch_good</code> is
+               used when present. Diagnosis columns holding <code>true</code>/<code>false</code> become
+               groups. Measure columns are matched against the model names, anything else is ignored.
+               Every subject is placed on the trajectory and the groups can be mapped in
+               <b>Brain maps</b>. The file stays in your browser.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="co-file">Cohort file</label>
+                <input id="co-file" type="file" accept=".csv,.txt"></div>
+              <div class="ctl" id="co-wrap" style="display:none"><label for="co-group">Colour by</label>
+                <select id="co-group"></select></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="co-clear" class="ghost">Clear cohort</button></div>
+            </div>
+            <div id="co-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="co-legend" class="legend" style="margin:8px 0 0"></div>
+      </div>
+    </details>
+<details class="grp">
+      <summary>Calibration</summary>
+      <div class="grpbody">
+        <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               The published curves are those of the average training site. Sites differ, so a
+               recording from a new site carries an unknown offset. Upload controls from your own
+               site and the page estimates that offset and shifts the curves accordingly.
+               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
+               per measure. The estimate is shrunk toward zero when few controls are available, so
+               a small sample moves the curves little rather than moving them wrongly.
+               Bethlehem et al. recommend at least 100 controls for this step.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="c-file">Controls file</label>
+                <input id="c-file" type="file" accept=".csv,.txt"></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="c-clear" class="ghost">Clear calibration</button></div>
+            </div>
+            <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="c-out"></div>
+      </div>
+    </details>
+  </aside>
 </div>
 
 <script>
@@ -791,6 +805,7 @@ async function runProfile(file){
   }
   if(!res.length){st('<span class="flag">No usable measure in this file.</span>');
     document.getElementById("p-out").innerHTML="";return;}
+  if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
   res.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
   const ext=res.filter(r=>Math.abs(r.z)>2).length;
   st(`<b>${res.length}</b> measures placed, <b>${ext}</b> of them beyond |z| = 2 `+
@@ -1084,8 +1099,9 @@ async function loadCohort(file){
     + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
   document.getElementById("co-wrap").style.display = "";
   const bg = document.getElementById("bo-group");
-  if(bg){ bg.innerHTML = order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
-          document.getElementById("bo-gwrap").style.display = order.length ? "" : "none"; }
+  if(bg){ bg.innerHTML = `<option value="">All subjects (${n})</option>`
+            + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
+          document.getElementById("bo-gwrap").style.display = ""; }
 
   const multi = order.length
     ? Array.from({length: n}, (_, i) => order.reduce((x, g) => x + G[g].flag[i], 0)).filter(x => x > 1).length
@@ -1172,11 +1188,12 @@ async function drawGroupMap(){
   leg.style.display = "none"; out.innerHTML = "";
 
   await loadIndex();
-  const grp = document.getElementById("bo-group").value;
+  const gsel = document.getElementById("bo-group");
+  const grp = gsel ? gsel.value : "";
   const fam = document.getElementById("bo-fam").value;
-  if(!grp){ st("Select a group."); return; }
-  const flag = COHORT.groups[grp].flag;
-  const idx = []; for(let i = 0; i < COHORT.n; i++) if(flag[i]) idx.push(i);
+  const flag = grp ? COHORT.groups[grp].flag : null;
+  const idx = []; for(let i = 0; i < COHORT.n; i++) if(!flag || flag[i]) idx.push(i);
+  const label = grp || "All subjects";
 
   let B;
   try { B = await loadFamily(fam); }
@@ -1224,7 +1241,7 @@ async function drawGroupMap(){
   });
 
   const nsig = rows.filter(r => r.q < 0.05).length;
-  st(`<b>${grp}</b>, n = <b>${idx.length}</b>. Mean z against the normative model over `
+  st(`<b>${label}</b>, n = <b>${idx.length}</b>. Mean z against the normative model over `
      + `<b>${rows.length}</b> regions, <b>${nsig}</b> of them below q = 0.05 after FDR. `
      + (useQC ? "Quality-adjusted models used. " : "No quality column: unadjusted models used. ")
      + (noCol ? `${noCol} region(s) absent from the file. ` : "")
@@ -1314,26 +1331,11 @@ async function initOwnMap(){
   document.getElementById("bo-svg").innerHTML = await loadAtlas();
   ["bo-fam","bo-lim","bo-group"].forEach(id => { const e = document.getElementById(id);
     if(e) e.onchange = drawOwnMap; });
-  document.getElementById("bo-file").onchange = async e => {
-    const f = e.target.files[0]; if(!f) return;
-    const txt = await f.text();
-    const lines = txt.trim().split(/\r?\n/).filter(Boolean);
-    let head = lines[0].split(/[,;\t]/).map(x => x.trim().toLowerCase());
-    let iM = head.indexOf("marker"), iV = head.indexOf("value"), start = 1;
-    if(iM < 0 || iV < 0){ iM = 0; iV = 1; start = 0; }
-    PROFILE = {};
-    for(let k = start; k < lines.length; k++){
-      const c = lines[k].split(/[,;\t]/).map(x => x.trim());
-      const v = parseFloat(c[iV]);
-      if(c[iM] && isFinite(v)) PROFILE[c[iM]] = v;
-    }
-    drawOwnMap();
-  };
   drawOwnMap();
 }
 
 async function drawOwnMap(){
-  if(COHORT && COHORT.order.length) return drawGroupMap();
+  if(COHORT) return drawGroupMap();
   const st = t => document.getElementById("bo-status").innerHTML = t;
   const svg = document.querySelector("#bo-svg svg");
   const leg = document.getElementById("bo-legend");
@@ -1345,11 +1347,11 @@ async function drawOwnMap(){
   leg.style.display = "none"; out.innerHTML = "";
 
   if(!PROFILE || !Object.keys(PROFILE).length){
-    st("Upload a profile file to colour the map."); return; }
+    st("Drop a profile or a cohort file in the panel on the right."); return; }
   const age = parseFloat(document.getElementById("p-age").value);
   const sex = document.getElementById("p-sex").value;
   if(!isFinite(age)){
-    st('<span class="flag">Set the age in Brain charts before building a map.</span>'); return; }
+    st('<span class="flag">Set the subject age in the panel on the right.</span>'); return; }
 
   const fam = document.getElementById("bo-fam").value;
   const lim = parseFloat(document.getElementById("bo-lim").value);
