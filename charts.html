@@ -988,6 +988,7 @@ async function loadCohort(file){
   const rd = file.stream().pipeThrough(new TextDecoderStream()).getReader();
   let buf = "", head = null, iAge = -1, iSex = -1, iFem = -1, iQC = -1;
   let marks = [], groups = [], acc = null, n = 0, sep = ",";
+  let pend = [], decided = false;
 
   const take = line => {
     if(!line) return;
@@ -1008,13 +1009,36 @@ async function loadCohort(file){
     }
     const c = line.split(sep);
     if(c.length < head.length - 2) return;
-    // premiere ligne de donnees : les colonnes booleennes deviennent des groupes
-    if(n === 0){
-      head.forEach((h, i) => {
-        const raw = (c[i] || "").trim();
-        if(raw && isBool(raw) && i !== iAge && i !== iSex){ groups.push([h, i]); acc.g[h] = []; }
-      });
+    // Les colonnes de diagnostic sont reconnues sur les 50 premieres lignes de
+    // donnees, pas sur la premiere seule : une colonne vide en tete de fichier
+    // serait sinon manquee. Est un groupe toute colonne dont les valeurs non
+    // vides sont toutes des booleens litteraux.
+    if(!decided){
+      pend.push(c);
+      if(pend.length < 50) return;
+      decide();
+      const q = pend; pend = []; decided = true;
+      q.forEach(push);
+      return;
     }
+    push(c);
+  };
+
+  const decide = () => {
+    head.forEach((h, i) => {
+      if(i === iAge || i === iSex || i === iFem || i === iQC || NORM[h]) return;
+      let seen = 0;
+      for(const c of pend){
+        const raw = (c[i] || "").trim();
+        if(!raw) continue;
+        if(!isBool(raw)) return;
+        seen++;
+      }
+      if(seen){ groups.push([h, i]); acc.g[h] = []; }
+    });
+  };
+
+  const push = c => {
     acc.age.push(parseFloat(c[iAge]));
     acc.sex.push(iSex >= 0 ? ((c[iSex] || "").trim().toLowerCase().startsWith("f") ? 1 : 0)
                            : (iFem >= 0 ? (parseFloat(c[iFem]) ? 1 : 0) : 0));
@@ -1033,11 +1057,16 @@ async function loadCohort(file){
     if(n && n % 500 === 0) st(`Reading… ${n} subjects`);
   }
   take(buf.replace(/\r$/, ""));
+  if(!decided && head){ decide(); pend.forEach(push); pend = []; decided = true; }
 
   if(!head || iAge < 0){
     st('<span class="flag">No <code>age</code> column found.</span>'); return; }
   if(!marks.length){
-    st('<span class="flag">No column matched a model name.</span>'); return; }
+    st('<span class="flag">No column matched a model name.</span> '
+       + (head.some(h => /_zscore$/.test(h))
+          ? 'This file holds z&#8209;scores; the page expects raw values and computes the z itself.'
+          : 'Measure columns must be named like the models, e.g. <code>bankssts_lh_alpha_periodic</code> '
+            + 'or <code>connectivity_alpha_mean</code>.')); return; }
 
   const cols = {};
   marks.forEach(([m]) => cols[m] = Float32Array.from(acc.v[m]));
