@@ -5,13 +5,15 @@ Le manifeste ne liste que les modeles dont le JSON existe, donc restreindre le
 site a un sous-ensemble revient a ne generer que les JSON voulus.
 
 Variables d'environnement :
-  OUT    dossier des JSON            (defaut ~/mnt/D-EEG/static/data/normative)
-  STATS  model_stats.csv, optionnel  (diagnostics affiches sous le graphe)
+  OUT       dossier des JSON              (defaut ~/mnt/D-EEG/static/data/normative)
+  STATS     model_stats du run sans qc    (diagnostics affiches sous le graphe)
+  STATS_QC  model_stats du run avec qc    (affiches quand le champ qualite est rempli)
 """
 import os, re, json, csv, sys
 
 OUT   = os.path.expanduser(os.environ.get("OUT", "~/mnt/D-EEG/static/data/normative"))
 STATS = os.path.expanduser(os.environ["STATS"]) if os.environ.get("STATS") else None
+STATS_QC = os.path.expanduser(os.environ["STATS_QC"]) if os.environ.get("STATS_QC") else None
 ONLY  = re.compile(os.environ["ONLY"]) if os.environ.get("ONLY") else None
 
 BANDS    = ["delta", "theta", "alpha", "beta", "gamma", "all"]
@@ -64,6 +66,7 @@ def load_stats(path):
 
 def main():
     stats = load_stats(STATS)
+    stats_qc = load_stats(STATS_QC)
     models, regions, types, bands = [], set(), set(), set()
 
     for f in sorted(os.listdir(OUT)):
@@ -84,8 +87,11 @@ def main():
                  "n": d.get("n"), "conv": d.get("converged"),
                  "raw": d.get("qc_ref") is None,
                  "qc": os.path.exists(os.path.join(OUT, marker + "_qc.json"))}
-        entry.update(stats.get(marker, {"shapiro_p": None, "smse": None,
-                                        "msll": None, "skew": None, "kurt": None}))
+        blank = {"shapiro_p": None, "smse": None, "msll": None,
+                 "skew": None, "kurt": None}
+        entry.update(stats.get(marker, blank))
+        entry.update({k + "_qc": v
+                      for k, v in stats_qc.get(marker, blank).items()})
         models.append(entry)
         types.add(typ)
         if band:
@@ -100,8 +106,11 @@ def main():
            "models": models}
     with open(os.path.join(OUT, "manifest.json"), "w") as fh:
         json.dump(man, fh, separators=(",", ":"))
+    ns  = sum(1 for m in models if m.get("smse") is not None)
+    nsq = sum(1 for m in models if m.get("smse_qc") is not None)
     print(f"manifest : {len(models)} modeles, {len(types)} types, "
           f"{len(man['bands'])} bandes, {len(man['regions'])} regions")
+    print(f"diagnostics : {ns} sans qc, {nsq} avec qc")
     print("types :", ", ".join(man["types"]))
 
 

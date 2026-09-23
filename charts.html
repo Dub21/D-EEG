@@ -58,12 +58,12 @@ svg{display:block;width:100%;height:auto;min-width:560px}
   padding:9px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
-.app{display:grid;grid-template-columns:268px minmax(0,1fr);min-height:100vh}
+.app{display:block;min-height:100vh}
 .side{background:var(--surface-1);border-right:1px solid var(--border);padding:18px 0;
       position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto}
 .brand{font-weight:600;font-size:15px;padding:0 18px 16px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .brand span{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
-.grp{border-bottom:1px solid var(--border)}
+.grp{border:1px solid var(--border);border-radius:8px;margin:0 0 14px;background:var(--surface-1)}
 .grp>summary{list-style:none;cursor:pointer;padding:11px 18px;font-size:11px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
 .grp>summary::-webkit-details-marker{display:none}
@@ -71,14 +71,20 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .grp[open]>summary::after{transform:rotate(-90deg)}
 .grp>summary:hover{color:var(--ink)}
 .grpbody{padding:2px 18px 16px}
+.grpbody table{font-size:12px}
+#pick{margin:0 0 18px}
 .grpbody>strong{display:block;margin-bottom:6px;font-size:13px}
-.grpbody .controls{flex-direction:column;gap:10px;margin:0 0 10px}
-.grpbody select,.grpbody input{width:100%;min-width:0}
-.grpbody .sub{font-size:12px;max-width:none}
-.grpbody a{display:block;color:var(--median);text-decoration:none;font-size:13px;padding:3px 0}
+.grpbody .controls{flex-direction:row;flex-wrap:wrap;gap:12px;margin:0 0 12px}
+.grpbody select,.grpbody input{min-width:0}
+.grpbody input[type=number]{width:120px}
+.grpbody select{width:auto}
+.grpbody input[type=file]{width:auto;max-width:100%}
+.grpbody .sub{font-size:12px;max-width:76ch}
+.grpbody a{color:var(--median);text-decoration:none;font-size:13px}
+#tab-io .grpbody a{display:block;padding:3px 0}
 .grpbody a:hover{text-decoration:underline}
 .grpbody table{font-size:11px}
-.main{padding:20px 26px 64px;max-width:1180px}
+.main{padding:20px 26px 64px;max-width:1180px;margin:0 auto}
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 20px}
 .tabs button{appearance:none;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;
   padding:16px 14px;font:inherit;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
@@ -93,8 +99,6 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .subtabs button.on{color:var(--ink);border-bottom-color:var(--median);font-weight:600}
 .subpanel[hidden]{display:none}
 @media (max-width:900px){
-  .app{grid-template-columns:1fr}
-  .side{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--border)}
   .tabs{grid-template-columns:repeat(2,1fr)}
   .main{padding:18px}
 }
@@ -128,77 +132,11 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 </head>
 <body>
 <div class="app">
-  <aside class="side">
-    <div class="brand">D&#8209;EEG <span>normative charts</span></div>
-
-    <details class="grp" open>
-      <summary>Data selection</summary>
-      <div class="grpbody"><div class="controls" id="controls"></div></div>
-    </details>
-
-    <details class="grp">
-      <summary>Upload data</summary>
-      <div class="grpbody">
-        <strong>Subject</strong>
-              <p class="sub" style="margin:6px 0 10px;font-size:13px">
-                 Age and sex of the person whose data you are placing. Used by the file-based
-                 modes in <b>Input / output</b>.</p>
-              <div class="controls" style="margin-bottom:0">
-                <div class="ctl"><label for="p-age">Age (years)</label>
-                  <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
-                <div class="ctl"><label for="p-sex">Sex</label>
-                  <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
-                <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
-                  <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
-              </div>
-        <strong>Full profile from a file</strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
-               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
-               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="p-file">File</label>
-                <input id="p-file" type="file" accept=".csv,.txt"></div>
-            </div>
-            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="p-out"></div>
-      </div>
-    </details>
-
-    <details class="grp">
-      <summary>Calibration</summary>
-      <div class="grpbody">
-        <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
-            <p class="sub" style="margin:6px 0 10px;font-size:13px">
-               The published curves are those of the average training site. Sites differ, so a
-               recording from a new site carries an unknown offset. Upload controls from your own
-               site and the page estimates that offset and shifts the curves accordingly.
-               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
-               per measure. The estimate is shrunk toward zero when few controls are available, so
-               a small sample moves the curves little rather than moving them wrongly.
-               Bethlehem et al. recommend at least 100 controls for this step.</p>
-            <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="c-file">Controls file</label>
-                <input id="c-file" type="file" accept=".csv,.txt"></div>
-              <div class="ctl"><label>&nbsp;</label>
-                <button id="c-clear" class="ghost">Clear calibration</button></div>
-            </div>
-            <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
-            <div id="c-out"></div>
-      </div>
-    </details>
-
-    <details class="grp">
-      <summary>Download files</summary>
-      <div class="grpbody">
-        <a href="static/data/normative/norm_params.csv" download>Standardisation constants</a>
-        <a href="static/data/normative/manifest.json" download>Model catalogue</a>
-        <a href="https://github.com/Dub21/D-EEG" target="_blank" rel="noopener">Source code</a>
-      </div>
-    </details>
-  </aside>
+  
 
   <main class="main">
+    <div class="brand">D&#8209;EEG <span>normative charts</span></div>
+
     <nav class="tabs" id="tabs">
       <button data-tab="charts" class="on"><span>Brain charts</span></button>
       <button data-tab="maps"><span>Brain maps</span></button>
@@ -318,12 +256,41 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     </section>
 
     <section class="panel" id="tab-charts">
+      <div id="pick"><div class="controls" id="controls"></div></div>
       <nav class="subtabs" id="ct-tabs">
         <button data-sub="model" class="on">Normative trajectory</button>
         <button data-sub="raw">Paper figure (observed data)</button>
       </nav>
 
       <div class="subpanel" id="ct-model">
+<details class="grp" open>
+      <summary>Upload data</summary>
+      <div class="grpbody">
+        <strong>Subject</strong>
+              <p class="sub" style="margin:6px 0 10px;font-size:13px">
+                 Age and sex of the person whose data you are placing. Used by the file-based
+                 modes in <b>Input / output</b>.</p>
+              <div class="controls" style="margin-bottom:0">
+                <div class="ctl"><label for="p-age">Age (years)</label>
+                  <input id="p-age" type="number" step="0.1" min="0" placeholder="12.4"></div>
+                <div class="ctl"><label for="p-sex">Sex</label>
+                  <select id="p-sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+                <div class="ctl"><label for="p-qc">Good channels (0–1, optional)</label>
+                  <input id="p-qc" type="number" step="0.01" min="0" max="1" placeholder="e.g. 0.62"></div>
+              </div>
+        <strong>Full profile from a file</strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               Two-column CSV, <code>marker,value</code>, one row per measure, raw values. Measure names
+               are the model's own (e.g. <code>bankssts_lh_alpha_periodic</code>).
+               <a href="static/data/normative/norm_params.csv" download>Full list of measures</a>.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="p-file">File</label>
+                <input id="p-file" type="file" accept=".csv,.txt"></div>
+            </div>
+            <div id="p-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="p-out"></div>
+      </div>
+    </details>
   <div class="card">
       <div class="chartwrap">
         <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
@@ -337,6 +304,41 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       </div>
       <div class="qc" id="qc"></div>
     </div>
+<div class="subj card" style="margin-top:20px">
+        <strong>Place your own subjects</strong>
+        <p class="sub" style="margin:6px 0 10px;font-size:13px">
+           One row per subject: <code>age, sex (M/F), raw value</code> for the measure selected
+           above. Example: <code>12.4, F, 0.573</code></p>
+        <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
+        <div>
+          <button id="go">Compute</button>
+          <button id="clear" class="ghost">Clear</button>
+        </div>
+        <div id="out"></div>
+      </div>
+
+<details class="grp">
+      <summary>Calibration</summary>
+      <div class="grpbody">
+        <strong>Calibrate on your own controls <span class="sub" style="font-weight:400">(optional)</span></strong>
+            <p class="sub" style="margin:6px 0 10px;font-size:13px">
+               The published curves are those of the average training site. Sites differ, so a
+               recording from a new site carries an unknown offset. Upload controls from your own
+               site and the page estimates that offset and shifts the curves accordingly.
+               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
+               per measure. The estimate is shrunk toward zero when few controls are available, so
+               a small sample moves the curves little rather than moving them wrongly.
+               Bethlehem et al. recommend at least 100 controls for this step.</p>
+            <div class="controls" style="margin-bottom:10px">
+              <div class="ctl"><label for="c-file">Controls file</label>
+                <input id="c-file" type="file" accept=".csv,.txt"></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="c-clear" class="ghost">Clear calibration</button></div>
+            </div>
+            <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
+            <div id="c-out"></div>
+      </div>
+    </details>
       </div>
 
       <div class="subpanel" id="ct-raw" hidden>
@@ -347,6 +349,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
              smoothed trajectory, in the measure's own units. Controls and clinical groups
              are shown together, uncorrected for site.</p>
           <img id="ct-img" alt="" style="max-width:100%;border-radius:6px">
+          <div class="qc" id="qc-raw"></div>
           <div id="ct-empty" class="sub" style="display:none;padding:44px 24px;text-align:center;
                background:var(--surface-2,#f5f5f4);border-radius:6px">
             No published figure for this measure yet.</div>
@@ -383,18 +386,15 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
     </section>
 
     <section class="panel" id="tab-io" hidden>
-    <div class="subj card" style="margin-top:20px">
-        <strong>Place your own subjects</strong>
-        <p class="sub" style="margin:6px 0 10px;font-size:13px">
-           One row per subject: <code>age, sex (M/F), raw value</code> for the measure selected
-           above. Example: <code>12.4, F, 0.573</code></p>
-        <textarea id="input" spellcheck="false" placeholder="12.4, F, 0.573&#10;31, M, 0.541"></textarea>
-        <div>
-          <button id="go">Compute</button>
-          <button id="clear" class="ghost">Clear</button>
-        </div>
-        <div id="out"></div>
+<details class="grp">
+      <summary>Download files</summary>
+      <div class="grpbody">
+        <a href="static/data/normative/norm_params.csv" download>Standardisation constants</a>
+        <a href="static/data/normative/manifest.json" download>Model catalogue</a>
+        <a href="https://github.com/Dub21/D-EEG" target="_blank" rel="noopener">Source code</a>
       </div>
+    </details>
+    
     </section>
   </main>
 </div>
@@ -498,20 +498,27 @@ function drawControls(){
 /* ---- chargement + rendu ---------------------------------------------- */
 async function load(){
   const m=markerFor();
-  const qc=document.getElementById("qc");
-  if(!m){CUR=null;qc.innerHTML="<span>No model for this combination.</span>";render();return;}
-  const j=await (await fetch(DATA+m.marker+".json")).json();
-  CUR={...j,meta:m};
+  const boxes=["qc","qc-raw"].map(i=>document.getElementById(i)).filter(Boolean);
+  const put=h=>boxes.forEach(b=>b.innerHTML=h);
+  if(!m){CUR=null;put("<span>No model for this combination.</span>");render();return;}
+  // le champ qualite decide de la variante affichee, comme pour le depot de profil
+  const useQC = userQC()!==null && m.qc;
+  const file  = m.marker + (useQC?"_qc":"");
+  const j=await (await fetch(DATA+file+".json")).json();
+  CUR={...j,marker:m.marker,meta:m};
   const f=(v,d=2)=>v==null?"–":(+v).toFixed(d);
-  qc.innerHTML=
-    `<span>model <b>${m.marker}</b></span>`+
+  const g=k=>m[useQC?k+"_qc":k];
+  put(
+    `<span>model <b>${file}</b></span>`+
     `<span>n controls <b>${j.n}</b></span>`+
-    `<span>Shapiro p <b>${f(m.shapiro_p,3)}</b></span>`+
-    `<span>SMSE <b>${f(m.smse)}</b></span>`+
-    `<span>MSLL <b>${f(m.msll)}</b></span>`+
-    `<span>skewness <b>${f(m.skew)}</b></span>`+
-    `<span>kurtosis <b>${f(m.kurt)}</b></span>`+
-    (j.converged?"":`<span class="softnote">did not converge within the iteration cap</span>`);
+    `<span>Shapiro p <b>${f(g("shapiro_p"),3)}</b></span>`+
+    `<span>SMSE <b>${f(g("smse"))}</b></span>`+
+    `<span>MSLL <b>${f(g("msll"))}</b></span>`+
+    `<span>skewness <b>${f(g("skew"))}</b></span>`+
+    `<span>kurtosis <b>${f(g("kurt"))}</b></span>`+
+    `<span class="softnote">${useQC?"quality-adjusted model"
+       :(userQC()!==null?"no quality-adjusted model for this measure":"unadjusted model")}</span>`+
+    (j.converged?"":`<span class="softnote">did not converge within the iteration cap</span>`));
   if(typeof RAW_SUB !== "undefined" && RAW_SUB === "raw") updateRawFigure();
   render();
 }
@@ -865,6 +872,8 @@ document.getElementById("tabs").onclick = e => {
   MAN=await (await fetch(DATA+"manifest.json")).json();
   loadNorm();
   drawControls();await load();
+  const q=document.getElementById("p-qc");
+  if(q) q.oninput=()=>{clearTimeout(q._t);q._t=setTimeout(load,300);};
 })();
 </script>
 </body>
