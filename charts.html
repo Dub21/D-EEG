@@ -512,6 +512,7 @@ async function load(){
     `<span>skewness <b>${f(m.skew)}</b></span>`+
     `<span>kurtosis <b>${f(m.kurt)}</b></span>`+
     (j.converged?"":`<span class="softnote">did not converge within the iteration cap</span>`);
+  if(typeof RAW_SUB !== "undefined" && RAW_SUB === "raw") updateRawFigure();
   render();
 }
 
