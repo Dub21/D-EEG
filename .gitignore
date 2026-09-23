@@ -16,3 +16,6 @@ df_features*.csv
 __pycache__/
 *.pyc
 .claude/
+
+# residus non versionnes
+static/data/normative/regional/_stray/
