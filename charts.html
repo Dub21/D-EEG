@@ -85,7 +85,7 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .grpbody input[type=file]{width:auto;max-width:100%}
 .grpbody .sub{font-size:12px;max-width:76ch}
 .grpbody a{color:var(--median);text-decoration:none;font-size:13px}
-#tab-io .grpbody a{display:block;padding:3px 0}
+.side.right .grpbody a{display:block;padding:3px 0}
 .grpbody a:hover{text-decoration:underline}
 .grpbody table{font-size:11px}
 .main{padding:20px 26px 64px;max-width:1180px;margin:0 auto;min-width:0}
@@ -98,7 +98,7 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .side.right .grpbody input,.side.right .grpbody select{width:100%}
 .side.right .grpbody .sub{max-width:none}
 .side.right .legend{flex-direction:column;align-items:flex-start;gap:5px}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 20px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 20px}
 .tabs button{appearance:none;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;
   padding:16px 14px;font:inherit;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
   color:var(--ink-2);cursor:pointer;text-align:left}
@@ -156,7 +156,6 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       <button data-tab="charts" class="on"><span>Brain charts</span></button>
       <button data-tab="maps"><span>Brain maps</span></button>
       <button data-tab="demo"><span>Demographics</span></button>
-      <button data-tab="io"><span>Input / output</span></button>
     </nav>
 
     <section class="panel" id="tab-demo" hidden>
@@ -382,17 +381,6 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       </div>
     </section>
 
-    <section class="panel" id="tab-io" hidden>
-<details class="grp">
-      <summary>Download files</summary>
-      <div class="grpbody">
-        <a href="static/data/normative/norm_params.csv" download>Standardisation constants</a>
-        <a href="static/data/normative/manifest.json" download>Model catalogue</a>
-        <a href="https://github.com/Dub21/D-EEG" target="_blank" rel="noopener">Source code</a>
-      </div>
-    </details>
-    
-    </section>
   </main>
   <aside class="side right">
     <div class="sidehead">Your data</div>
@@ -458,6 +446,14 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
             </div>
             <div id="c-status" class="sub" style="font-size:13px;margin:0"></div>
             <div id="c-out"></div>
+      </div>
+    </details>
+<details class="grp">
+      <summary>Download files</summary>
+      <div class="grpbody">
+        <a href="static/data/normative/norm_params.csv" download>Standardisation constants</a>
+        <a href="static/data/normative/manifest.json" download>Model catalogue</a>
+        <a href="https://github.com/Dub21/D-EEG" target="_blank" rel="noopener">Source code</a>
       </div>
     </details>
   </aside>
@@ -1083,6 +1079,46 @@ function makeLiner(){
   };
 }
 
+/* Recompose les marqueurs globaux _mean quand le fichier ne les porte pas.
+   La recette est celle du pipeline (5keeg_refactored, cellule 29) : moyenne
+   des colonnes finissant par {bande}_{marqueur} pour les marqueurs a bande,
+   et par _{marqueur} pour les scalaires. A noter que le pipeline croit
+   exclure les colonnes knee par un (?<!knee_) mal place, qui ne filtre rien :
+   exponent_mean et offset_mean moyennent donc les variantes fixe et knee
+   ensemble. On reproduit ce comportement, sans quoi les valeurs ne
+   correspondraient plus aux modeles publies. */
+const MEAN_BANDS   = ["delta","theta","alpha","beta","gamma","all"];
+const MEAN_BAND_MK = ["periodic","connectivity","entropy","psd"];
+const MEAN_SCALAR  = ["cf_alpha","pw_alpha","bw_alpha","exponent","offset"];
+const isRegional   = m => /_(lh|rh)_/.test(m);
+
+function deriveMeans(cols, n){
+  const made = [], partial = [];
+  const build = (name, test) => {
+    if(!NORM[name] || cols[name]) return;              // absent des modeles, ou deja fourni
+    const want = Object.keys(NORM).filter(m => isRegional(m) && test(m));
+    const have = want.filter(m => cols[m]);
+    if(!want.length || have.length < 20) return;
+    if(have.length < want.length){ partial.push([name, have.length, want.length]); return; }
+    const a = new Float32Array(n);
+    for(let i = 0; i < n; i++){
+      let sum = 0, k = 0;
+      for(let j = 0; j < have.length; j++){
+        const v = cols[have[j]][i];
+        if(isFinite(v)){ sum += v; k++; }              // pandas ignore les NaN
+      }
+      a[i] = k ? sum / k : NaN;
+    }
+    cols[name] = a; made.push(name);
+  };
+  for(const b of MEAN_BANDS)
+    for(const t of MEAN_BAND_MK)
+      build(`${t}_${b}_mean`, m => m.endsWith(`${b}_${t}`));
+  for(const t of MEAN_SCALAR)
+    build(`${t}_mean`, m => m.endsWith(`_${t}`));
+  return {made, partial};
+}
+
 /* ---- cohorte : un fichier large, une ligne par sujet ------------------- */
 let COHORT = null;
 
@@ -1203,6 +1239,7 @@ async function loadCohort(file){
 
   const cols = {};
   marks.forEach(([m]) => cols[m] = Float32Array.from(acc.v[m]));
+  const derived = deriveMeans(cols, n);
   // un groupe trop petit ne donne ni carte ni nuage lisible, et un export
   // clinique traine souvent des dizaines de colonnes booleennes quasi vides
   const GMIN = 20;
@@ -1230,7 +1267,11 @@ async function loadCohort(file){
   const multi = order.length
     ? Array.from({length: n}, (_, i) => order.reduce((x, g) => x + G[g].flag[i], 0)).filter(x => x > 1).length
     : 0;
-  st(`<b>${n}</b> subjects, <b>${marks.length}</b> measures, <b>${order.length}</b> diagnosis column(s).`
+  st(`<b>${n}</b> subjects, <b>${Object.keys(cols).length}</b> measures, <b>${order.length}</b> diagnosis column(s).`
+     + (derived.made.length ? ` ${derived.made.length} whole-brain measure(s) averaged from the regions.` : "")
+     + (derived.partial.length
+        ? ` ${derived.partial.length} not averaged, regions missing (${derived.partial[0][0]}: ${derived.partial[0][1]} of ${derived.partial[0][2]}).`
+        : "")
      + (tiny ? ` ${tiny} column(s) with fewer than ${GMIN} subjects ignored.` : "")
      + (COHORT.hasSex ? "" : ' <span class="flag">No sex column: all treated as male.</span>')
      + (multi ? ` ${multi} subject(s) carry more than one diagnosis; the chart colours each by its largest group.` : ""));
