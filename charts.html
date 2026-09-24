@@ -296,12 +296,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
         <div id="chartgrid" style="display:none"></div>
         <div id="tip"></div>
       </div>
-      <div class="legend">
-        <span><i style="background:var(--band-outer)"></i>5–95<sup>th</sup> centile</span>
-        <span><i style="background:var(--band-inner)"></i>25–75<sup>th</sup> centile</span>
-        <span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>
-        <span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>
-      </div>
+      <div class="legend" id="clegend"></div>
       <div class="qc" id="qc"></div>
     </div>
 <div class="subj card" style="margin-top:20px">
@@ -377,6 +372,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
          from the normative model, with regions surviving FDR outlined.</p>
       <div class="controls" style="margin-bottom:14px">
         <div class="ctl"><label for="bo-fam">Measure</label><select id="bo-fam"></select></div>
+        <div class="ctl" id="bo-bwrap"><label for="bo-band">Band</label><select id="bo-band"></select></div>
         <div class="ctl"><label for="bo-lim">Scale (&plusmn;z)</label>
           <select id="bo-lim"><option value="auto" selected>auto</option><option>1</option><option>2</option><option>4</option><option>5</option></select></div>
         <div class="ctl" id="bo-gwrap" style="display:none"><label for="bo-group">Group</label>
@@ -625,7 +621,7 @@ function drawControls(){
     (noBand?"":sel("f-band","Band",[["*","All bands"],...bs.map(b=>[b,BANDLAB[b]||b])],state.band))+
     (regions.length>1?sel("f-region","Region",regions.map(r=>[r,r]),state.region):"")+
     (state.region==="Whole brain"?"":sel("f-hemi","Hemisphere",[["lh","Left"],["rh","Right"]],state.hemi))+
-    sel("f-sex","Sex",[["m","Male"],["f","Female"]],state.sex);
+    sel("f-sex","Sex",[["m","Male"],["f","Female"],["*","Both"]],state.sex);
   const bind=(id,k)=>{const e=document.getElementById(id);
     if(e)e.onchange=()=>{state[k]=e.value;drawControls();load();};};
   bind("f-type","type");bind("f-band","band");bind("f-region","region");
@@ -723,13 +719,19 @@ const WS=340,HS=250,MS={t:14,r:10,b:32,l:44};   // petites multiples, cinq par l
 function paintChart(svg, cur, geom, opts){
   const {w, h, m} = geom, small = !!opts.small;
   if(!cur){ svg.innerHTML=""; return null; }
-  const g=cur[state.sex], ages=cur.age, n=ages.length;
+  const both = state.sex === "*";
+  const sexes = both ? ["m","f"] : [state.sex];
+  const ages=cur.age, n=ages.length;
   const off=calOf(cur.marker);
   const npc=NORM&&NORM[cur.marker];
   const toAxis=v=>npc?v*npc.std+npc.mean:v;
   const P=[0.05,0.25,0.5,0.75,0.95];
-  const curves=P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],cur.nu,cur.tau))));
-  let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
+  const SET=sexes.map(sx=>{
+    const g=cur[sx];
+    return {sex:sx, c:P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],cur.nu,cur.tau))))};
+  });
+  const curves=SET[0].c;
+  let lo=Math.min(...SET.map(S=>Math.min(...S.c[0]))), hi=Math.max(...SET.map(S=>Math.max(...S.c[4])));
   if(!small) SUBJ.forEach(x=>{if(x.ok){lo=Math.min(lo,x.value);hi=Math.max(hi,x.value);}});
   // la cohorte etend l'axe jusqu'a ses 1er et 99e centiles : quelques valeurs
   // aberrantes ecraseraient la figure si on prenait les extremes
@@ -737,7 +739,7 @@ function paintChart(svg, cur, geom, opts){
   let coClip = 0;
   if(CO){
     const v=[]; for(let i=0;i<COHORT.n;i++){
-      if(COHORT.sexF[i]===(state.sex==="f"?1:0) && isFinite(CO[i])) v.push(CO[i]); }
+      if((both || COHORT.sexF[i]===(state.sex==="f"?1:0)) && isFinite(CO[i])) v.push(CO[i]); }
     if(v.length){ v.sort((a,b)=>a-b);
       lo=Math.min(lo,v[Math.floor(v.length*0.01)]);
       hi=Math.max(hi,v[Math.min(v.length-1,Math.floor(v.length*0.99))]); }
@@ -755,9 +757,12 @@ function paintChart(svg, cur, geom, opts){
   let s="";
   yt.forEach(v=>{s+=`<line x1="${m.l}" y1="${Y(v).toFixed(1)}" x2="${w-m.r}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`+
     `<text x="${m.l-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="${fs}" fill="var(--muted)">${(+v.toFixed(3))}</text>`;});
-  s+=`<path d="${area(curves[0],curves[4])}" fill="var(--band-outer)" opacity="0.55"/>`;
-  s+=`<path d="${area(curves[1],curves[3])}" fill="var(--band-inner)" opacity="0.55"/>`;
-  s+=`<path d="${path(curves[2])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-linejoin="round"/>`;
+  SET.forEach(S=>{
+    const dash = both && S.sex==="f" ? ' stroke-dasharray="6 4"' : "";
+    s+=`<path d="${area(S.c[0],S.c[4])}" fill="var(--band-outer)" opacity="${both?0.32:0.55}"/>`;
+    s+=`<path d="${area(S.c[1],S.c[3])}" fill="var(--band-inner)" opacity="${both?0.32:0.55}"/>`;
+    s+=`<path d="${path(S.c[2])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-linejoin="round"${dash}/>`;
+  });
   ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${h-m.b+16}" text-anchor="middle" font-size="${fs}" fill="var(--muted)">${t}</text>`;});
   s+=`<line x1="${m.l}" y1="${h-m.b}" x2="${w-m.r}" y2="${h-m.b}" stroke="var(--axis)" stroke-width="1"/>`;
   if(!small){
@@ -768,24 +773,29 @@ function paintChart(svg, cur, geom, opts){
   if(CO){
     const cls=cohortClass(), want=state.sex==="f"?1:0, pts=[];
     for(let i=0;i<COHORT.n;i++){
-      if(COHORT.sexF[i]!==want) continue;
+      if(!both && COHORT.sexF[i]!==want) continue;
       const v=CO[i], a=COHORT.age[i];
       if(!isFinite(v)||!isFinite(a)||a<a0||a>a1) continue;
       if(v<lo||v>hi){ coClip++; continue; }
-      pts.push([X(a),Y(v),cls.of(i)]);
+      pts.push([X(a),Y(v),cls.of(i),COHORT.sexF[i]]);
     }
     pts.sort((p,q)=>(p[2]<0?0:1)-(q[2]<0?0:1));
-    const r=small?2:3;
-    pts.forEach(([x,y,k])=>{
-      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${k>=0?catColor(k):OTHER()}"`
-        +` stroke="var(--surface-1)" stroke-width="${small?0.8:1.2}"`
-        +(k>=0?'':' opacity="0.5"')+`/>`;
+    const r=small?2:3, sw=small?0.8:1.2;
+    pts.forEach(([x,y,k,f])=>{
+      const col=k>=0?catColor(k):OTHER(), op=k>=0?"":' opacity="0.5"';
+      // en mode "Both" la forme porte le sexe : la couleur est deja prise
+      // par le diagnostic, et rien ne doit dependre de la teinte seule
+      s+= (both && f)
+        ? `<rect x="${(x-r).toFixed(1)}" y="${(y-r).toFixed(1)}" width="${2*r}" height="${2*r}"`
+          +` fill="${col}" stroke="var(--surface-1)" stroke-width="${sw}"${op}/>`
+        : `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${col}"`
+          +` stroke="var(--surface-1)" stroke-width="${sw}"${op}/>`;
     });
     if(coClip) s+=`<text x="${w-m.r}" y="${m.t+11}" text-anchor="end" font-size="${fs}" fill="var(--muted)">`
       +`${coClip} off scale</text>`;
   }
   if(!small){
-    SUBJ.forEach(x=>{if(!x.ok||x.sex!==state.sex)return;
+    SUBJ.forEach(x=>{if(!x.ok||(!both && x.sex!==state.sex))return;
       s+=`<circle cx="${X(x.age).toFixed(1)}" cy="${Y(x.value).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
     s+=`<line id="cross" x1="0" y1="${m.t}" x2="0" y2="${h-m.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
     s+=`<rect x="${m.l}" y="${m.t}" width="${w-m.l-m.r}" height="${h-m.t-m.b}" fill="transparent" id="hit"/>`;
@@ -794,7 +804,29 @@ function paintChart(svg, cur, geom, opts){
   return {ages,curves,X,Y,a0,a1};
 }
 
+
+/* Legende du graphe, refaite a chaque rendu : le mode "Both" y ajoute
+   la distinction de sexe, portee par le trait et par la forme. */
+function chartLegend(){
+  const el = document.getElementById("clegend");
+  if(!el) return;
+  const both = state.sex === "*";
+  let h = `<span><i style="background:var(--band-outer)"></i>5&ndash;95<sup>th</sup> centile</span>`
+        + `<span><i style="background:var(--band-inner)"></i>25&ndash;75<sup>th</sup> centile</span>`;
+  h += both
+    ? `<span><i style="background:var(--median);height:2px;border-radius:1px"></i>median, male</span>`
+      + `<span><i style="height:2px;border-radius:0;background:repeating-linear-gradient(90deg,`
+      + `var(--median) 0 6px,transparent 6px 10px)"></i>median, female</span>`
+    : `<span><i style="background:var(--median);height:2px;border-radius:1px"></i>median</span>`;
+  if(COHORT && both)
+    h += `<span><i style="background:var(--ink-2);border-radius:50%;width:9px;height:9px"></i>male</span>`
+       + `<span><i style="background:var(--ink-2);width:9px;height:9px"></i>female</span>`;
+  h += `<span><i style="background:var(--subject);border-radius:50%;width:10px;height:10px"></i>your subjects</span>`;
+  el.innerHTML = h;
+}
+
 function render(){
+  chartLegend();
   const one=document.getElementById("chart"), grid=document.getElementById("chartgrid");
   if(CURS && CURS.length>1){
     one.style.display="none"; grid.style.display="grid";
@@ -1482,6 +1514,28 @@ document.getElementById("co-clear").onclick = () => {
   if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
 };
 
+/* Bandes disponibles pour la mesure choisie sur les cartes. Une mesure sans
+   bande, exponent ou offset, masque le selecteur. */
+function drawMapBands(){
+  const t = document.getElementById("bo-fam").value;
+  const wrap = document.getElementById("bo-bwrap");
+  const sel = document.getElementById("bo-band");
+  const bs = BANDS_R.filter(b => RIDX && RIDX.families[`${t}_${b}`]);
+  if(!bs.length){ wrap.style.display = "none"; sel.innerHTML = ""; return; }
+  wrap.style.display = "";
+  const keep = sel.value;
+  sel.innerHTML = `<option value="*">All bands</option>`
+    + bs.map(b => `<option value="${b}">${BANDLAB[b] || b}</option>`).join("");
+  if([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+/* Famille demandee : <mesure>_<bande>, <mesure>_* ou <mesure> seule. */
+function mapFam(){
+  const t = document.getElementById("bo-fam").value;
+  const sel = document.getElementById("bo-band");
+  if(!sel.options.length) return t;
+  return sel.value === "*" ? `${t}_*` : `${t}_${sel.value}`;
+}
+
 /* Ecarts moyens d'un groupe pour une famille, avec test et q-valeurs. */
 async function groupRows(fam, idx, useQC){
   let B;
@@ -1551,7 +1605,7 @@ async function drawGroupMap(){
   await loadIndex();
   const gsel = document.getElementById("bo-group");
   const grp = gsel ? gsel.value : "";
-  const fam = document.getElementById("bo-fam").value;
+  const fam = mapFam();
   const flag = (grp && grp !== "*") ? COHORT.groups[grp].flag : null;
   const idx = []; for(let i = 0; i < COHORT.n; i++) if(!flag || flag[i]) idx.push(i);
   const label = (grp && grp !== "*") ? grp : "All subjects";
@@ -1861,16 +1915,18 @@ async function loadAtlas(){
 async function initOwnMap(){
   const idx = await loadIndex();
   const sel = document.getElementById("bo-fam");
-  const fams = Object.keys(idx.families).sort();
-  const multi = [...new Set(fams.map(f => {
+  // Measure et Band separes, comme sur les trajectoires
+  const fams = Object.keys(idx.families);
+  const types = [...new Set(fams.map(f => {
     const i = f.lastIndexOf("_");
-    return BANDS_R.includes(f.slice(i + 1)) ? f.slice(0, i) : null;
-  }).filter(Boolean))].sort();
-  sel.innerHTML = multi.map(t => `<option value="${t}_*">${LABEL[t] || t} — all bands</option>`).join("")
-    + fams.map(f => `<option value="${f}">${famLabel(f)}</option>`).join("");
+    return BANDS_R.includes(f.slice(i + 1)) ? f.slice(0, i) : f;
+  }))].sort();
+  sel.innerHTML = types.map(t => `<option value="${t}">${LABEL[t] || t}</option>`).join("");
+  drawMapBands();
   document.getElementById("bo-svg").innerHTML = await loadAtlas();
-  ["bo-fam","bo-lim","bo-group"].forEach(id => { const e = document.getElementById(id);
+  ["bo-lim","bo-group","bo-band"].forEach(id => { const e = document.getElementById(id);
     if(e) e.onchange = drawOwnMap; });
+  document.getElementById("bo-fam").onchange = () => { drawMapBands(); drawOwnMap(); };
   drawOwnMap();
 }
 
@@ -1895,7 +1951,7 @@ async function drawOwnMap(){
   if(!isFinite(age)){
     st('<span class="flag">Set the subject age in the panel on the right.</span>'); return; }
 
-  let fam = document.getElementById("bo-fam").value;
+  let fam = mapFam();
   if(fam.endsWith("_*")){
     const t = fam.slice(0, -2);
     fam = BANDS_R.map(b => `${t}_${b}`).find(f => RIDX.families[f]) || fam;
