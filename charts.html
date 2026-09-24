@@ -41,14 +41,14 @@ select{font:inherit;padding:6px 8px;border:1px solid var(--border);border-radius
 .card{background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:16px}
 .chartwrap{position:relative;overflow-x:auto}
 svg{display:block;width:100%;height:auto;min-width:560px}
-#chartgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px 16px}
+#chartgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 12px}
 #chartgrid svg{min-width:0}
-#bo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+#bo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px 10px}
 #bo-grid figure{margin:0}
-#bo-grid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 2px 2px}
+#bo-grid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 2px 2px;line-height:1.35}
 #bo-grid svg{min-width:0}
 #chartgrid figure{margin:0}
-#chartgrid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 4px 2px}
+#chartgrid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 3px 2px;white-space:nowrap}
 .legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:10px;
         font-size:12px;color:var(--ink-2)}
 .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
@@ -122,6 +122,7 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 @media (max-width:900px){
   .app{grid-template-columns:1fr}
   .side.right{position:static;max-height:none;border-left:none;border-top:1px solid var(--border)}
+  #chartgrid,#bo-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
   .tabs{grid-template-columns:repeat(2,1fr)}
   .main{padding:18px}
 }
@@ -545,6 +546,9 @@ function sel(id,label,opts,val){
 const state={type:"periodic",band:"alpha",region:"Whole brain",hemi:"lh",sex:"m"};
 
 const REG_BANDS = ["delta","theta","alpha","beta","gamma","all"];
+// la vue "toutes bandes" s'arrete a gamma : le broadband n'est pas une bande
+// de plus, c'est leur somme, et il ecrase la lecture cote a cote
+const SPECTRAL = ["delta","theta","alpha","beta","gamma"];
 const regional = () => state.region !== "Whole brain";
 function hasBand(t){
   if(regional() && RIDX) return REG_BANDS.some(b=>RIDX.families[t+"_"+b]);
@@ -633,7 +637,7 @@ async function load(){
     const boxes=["qc","qc-raw"].map(i=>document.getElementById(i)).filter(Boolean);
     const keep=state.band;
     CURS=[];
-    for(const b of bandsFor(state.type)){
+    for(const b of bandsFor(state.type).filter(x=>SPECTRAL.includes(x))){
       state.band=b;
       const mm=markerFor();
       if(!mm) continue;
@@ -708,7 +712,7 @@ async function load(){
 }
 
 const W=860,H=460,M={t:18,r:18,b:44,l:56};
-const WS=420,HS=250,MS={t:14,r:12,b:34,l:48};   // petites multiples
+const WS=340,HS=250,MS={t:14,r:10,b:32,l:44};   // petites multiples, cinq par ligne
 
 /* Dessine une trajectoire dans un <svg>. Sert aussi bien au grand graphe
    qu'aux vignettes par bande, la seule difference etant la geometrie et
@@ -741,8 +745,8 @@ function paintChart(svg, cur, geom, opts){
   const Y=v=>h-m.b-(v-lo)/(hi-lo)*(h-m.t-m.b);
   const path=c=>c.map((v,i)=>(i?"L":"M")+X(ages[i]).toFixed(1)+" "+Y(v).toFixed(1)).join("");
   const area=(c1,c2)=>path(c1)+c2.map((v,i)=>{const k=n-1-i;return "L"+X(ages[k]).toFixed(1)+" "+Y(c2[k]).toFixed(1);}).join("")+"Z";
-  const ticks=(small?[1,5,10,20,40,60]:[0,5,10,20,30,40,50,60,70]).filter(t=>t>=a0&&t<=a1);
-  const yt=[];const step=niceStep(hi-lo, small?4:6);
+  const ticks=(small?[1,10,30,60]:[0,5,10,20,30,40,50,60,70]).filter(t=>t>=a0&&t<=a1);
+  const yt=[];const step=niceStep(hi-lo, small?3:6);
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step)yt.push(v);
   const fs=small?10:11;
   let s="";
@@ -1554,7 +1558,7 @@ async function drawGroupMap(){
 
   if(fam.endsWith("_*")){
     const type = fam.slice(0, -2);
-    const bands = BANDS_R.filter(b => RIDX.families[`${type}_${b}`]);
+    const bands = SPECTRAL.filter(b => RIDX.families[`${type}_${b}`]);
     const sets = [];
     for(const b of bands){
       const r = await groupRows(`${type}_${b}`, idx, useQC);
