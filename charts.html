@@ -1366,6 +1366,7 @@ async function loadCohort(file){
   }
   const bg = document.getElementById("bo-group");
   if(bg){ bg.innerHTML = `<option value="">All subjects (${n})</option>`
+            + (order.length > 1 ? `<option value="*">All diagnoses, side by side</option>` : "")
             + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
           document.getElementById("bo-gwrap").style.display = ""; }
 
@@ -1548,58 +1549,97 @@ async function drawGroupMap(){
   const gsel = document.getElementById("bo-group");
   const grp = gsel ? gsel.value : "";
   const fam = document.getElementById("bo-fam").value;
-  const flag = grp ? COHORT.groups[grp].flag : null;
+  const flag = (grp && grp !== "*") ? COHORT.groups[grp].flag : null;
   const idx = []; for(let i = 0; i < COHORT.n; i++) if(!flag || flag[i]) idx.push(i);
-  const label = grp || "All subjects";
+  const label = (grp && grp !== "*") ? grp : "All subjects";
 
   const useQC = Array.prototype.some.call(COHORT.qc, v => isFinite(v));
   const grid = document.getElementById("bo-grid");
   const single = document.getElementById("bo-svg");
 
-  if(fam.endsWith("_*")){
-    const type = fam.slice(0, -2);
-    const bands = SPECTRAL.filter(b => RIDX.families[`${type}_${b}`]);
-    const sets = [];
-    for(const b of bands){
-      const r = await groupRows(`${type}_${b}`, idx, useQC);
-      if(r && r.rows.length) sets.push({band: b, ...r});
+  const multiBand = fam.endsWith("_*");
+  const multiGroup = grp === "*";
+  if(multiBand || multiGroup){
+    const type = multiBand ? fam.slice(0, -2) : null;
+    const bands = multiBand ? SPECTRAL.filter(b => RIDX.families[`${type}_${b}`]) : [null];
+    let groups = multiGroup ? [...COHORT.order] : [grp];
+    // groupes par effectif decroissant, et plafond sur le nombre de vignettes
+    // pour qu'une cohorte a vingt diagnostics ne fabrique pas 115 cerveaux
+    if(multiGroup) groups.sort((a, b) => COHORT.groups[b].n - COHORT.groups[a].n);
+    const CAP = 40;
+    const cut = groups.length * bands.length > CAP
+      ? Math.max(1, Math.floor(CAP / bands.length)) : groups.length;
+    const dropped = groups.length - cut;
+    groups = groups.slice(0, cut);
+
+    st(`Computing ${groups.length * bands.length} map(s)…`);
+    const cells = [];
+    for(const g of groups){
+      // g vaut "" pour le pseudo-groupe "tous les sujets", qui n'a pas de drapeau
+      const gf = (g && COHORT.groups[g]) ? COHORT.groups[g].flag : null;
+      const gi = []; for(let i = 0; i < COHORT.n; i++) if(!gf || gf[i]) gi.push(i);
+      for(const bd of bands){
+        const f2 = multiBand ? `${type}_${bd}` : fam;
+        const r = await groupRows(f2, gi, useQC);
+        if(r && r.rows.length) cells.push({group: g, band: bd, n: gi.length, rows: r.rows});
+      }
     }
-    if(!sets.length){
+    if(!cells.length){
       st('<span class="flag">No region of this measure is present in the cohort file.</span>');
       return; }
+
     const sel2 = document.getElementById("bo-lim").value;
-    // echelle commune a toutes les bandes, sinon on compare des couleurs
-    // qui ne veulent pas dire la meme chose
+    // echelle commune a toutes les vignettes : sans cela on comparerait des
+    // couleurs qui ne veulent pas dire la meme chose
     const lim = sel2 === "auto"
-      ? Math.max(0.05, Math.ceil(Math.max(...sets.flatMap(s2 => s2.rows.map(r => Math.abs(r.mean)))) * 20) / 20)
+      ? Math.max(0.05, Math.ceil(Math.max(...cells.flatMap(c => c.rows.map(r => Math.abs(r.mean)))) * 20) / 20)
       : parseFloat(sel2);
+
     single.style.display = "none"; grid.style.display = "grid";
-    grid.innerHTML = sets.map(s2 => {
-      const nsig = s2.rows.filter(r => r.q < 0.05).length;
-      return `<figure><figcaption>${BANDLAB[s2.band] || s2.band} `
-           + `<span class="off">${nsig}/${s2.rows.length} at q&lt;0.05</span></figcaption>`
-           + paintAtlas(s2.rows, lim).html + `</figure>`;
+    // une ligne par groupe quand les deux axes sont deployes : le nombre de
+    // colonnes suit les bandes reellement presentes, sinon la matrice est bancale
+    const nBandCells = new Set(cells.map(c => c.band)).size;
+    grid.style.gridTemplateColumns =
+      `repeat(${Math.min(multiBand ? nBandCells : 5, 5)},minmax(0,1fr))`;
+    grid.innerHTML = cells.map(c => {
+      const nsig = c.rows.filter(r => r.q < 0.05).length;
+      const head = [multiGroup ? `${c.group} (n=${c.n})` : null,
+                    c.band ? (BANDLAB[c.band] || c.band) : null].filter(Boolean).join(" · ");
+      return `<figure><figcaption>${head} `
+           + `<span class="off">${nsig}/${c.rows.length} at q&lt;0.05</span></figcaption>`
+           + paintAtlas(c.rows, lim).html + `</figure>`;
     }).join("");
-    const tot = sets.reduce((a, s2) => a + s2.rows.filter(r => r.q < 0.05).length, 0);
-    st(`<b>${label}</b>, n = <b>${idx.length}</b>. Mean z against the normative model, `
-       + `<b>${sets.length}</b> bands, <b>${tot}</b> region-band pairs below q = 0.05 after FDR. `
+
+    const tot = cells.reduce((a, c) => a + c.rows.filter(r => r.q < 0.05).length, 0);
+    const nb = nBandCells, ng = new Set(cells.map(c => c.group)).size;
+    st(`<b>${cells.length}</b> map(s): `
+       + (multiGroup ? `<b>${ng}</b> group(s)` : `<b>${label}</b>, n = <b>${idx.length}</b>`)
+       + (multiBand ? ` × <b>${nb}</b> band(s) present in the file` : "")
+       + `. Mean z against the normative model, <b>${tot}</b> region cells below q = 0.05 after FDR. `
        + (useQC ? "Quality-adjusted models used. " : "No quality column: unadjusted models used. ")
-       + `Shared scale across bands.`);
+       + `Shared scale. FDR is applied within each map.`
+       + (dropped ? ` <span class="flag">${dropped} smaller group(s) not shown.</span>` : ""));
+
     document.getElementById("bo-bar").style.background = legendGradient(lim);
     document.getElementById("bo-lo").textContent = (-lim).toFixed(2);
     document.getElementById("bo-hi").textContent = "+" + lim.toFixed(2);
     leg.style.display = "block";
-    const all = sets.flatMap(s2 => s2.rows.map(r => ({...r, band: s2.band})));
+
+    const all = cells.flatMap(c => c.rows.map(r => ({...r, group: c.group, band: c.band})));
     all.sort((a, b) => Math.abs(b.mean) - Math.abs(a.mean));
     out.innerHTML =
-      `<table><thead><tr><th>Band</th><th>Region</th><th>n</th><th>Mean z</th><th>q (FDR)</th></tr></thead><tbody>`
-      + all.slice(0, 12).map(r => `<tr><td>${BANDLAB[r.band] || r.band}</td><td>${r.region}</td>`
-          + `<td>${r.n}</td><td>${r.mean.toFixed(3)}</td>`
+      `<table><thead><tr>${multiGroup ? "<th>Group</th>" : ""}${multiBand ? "<th>Band</th>" : ""}`
+      + `<th>Region</th><th>n</th><th>Mean z</th><th>q (FDR)</th></tr></thead><tbody>`
+      + all.slice(0, 12).map(r => `<tr>`
+          + (multiGroup ? `<td>${r.group}</td>` : "")
+          + (multiBand ? `<td>${BANDLAB[r.band] || r.band}</td>` : "")
+          + `<td>${r.region}</td><td>${r.n}</td><td>${r.mean.toFixed(3)}</td>`
           + `<td>${r.q < 1e-4 ? r.q.toExponential(1) : r.q.toFixed(4)}</td></tr>`).join("")
       + `</tbody></table><p class="sub" style="font-size:12px;margin-top:8px">`
-      + `The twelve largest mean deviations across all bands. FDR is applied within each band.</p>`;
+      + `The twelve largest mean deviations across everything shown.</p>`;
     return;
   }
+
   grid.style.display = "none"; single.style.display = "";
 
   let B;
