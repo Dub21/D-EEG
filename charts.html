@@ -41,6 +41,14 @@ select{font:inherit;padding:6px 8px;border:1px solid var(--border);border-radius
 .card{background:var(--surface-1);border:1px solid var(--border);border-radius:8px;padding:16px}
 .chartwrap{position:relative;overflow-x:auto}
 svg{display:block;width:100%;height:auto;min-width:560px}
+#chartgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px 16px}
+#chartgrid svg{min-width:0}
+#bo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+#bo-grid figure{margin:0}
+#bo-grid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 2px 2px}
+#bo-grid svg{min-width:0}
+#chartgrid figure{margin:0}
+#chartgrid figcaption{font-size:12px;color:var(--ink-2);margin:0 0 4px 2px}
 .legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:10px;
         font-size:12px;color:var(--ink-2)}
 .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
@@ -88,7 +96,7 @@ svg{display:block;width:100%;height:auto;min-width:560px}
 .side.right .grpbody a{display:block;padding:3px 0}
 .grpbody a:hover{text-decoration:underline}
 .grpbody table{font-size:11px}
-.main{padding:20px 26px 64px;max-width:1180px;margin:0 auto;min-width:0}
+.main{padding:20px 26px 64px;max-width:1560px;min-width:0}
 .side.right{background:var(--surface-1);border-left:1px solid var(--border);
   padding:18px 0 40px;position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
 .side.right .grp{border:none;border-bottom:1px solid var(--border);border-radius:0;margin:0;background:none}
@@ -281,6 +289,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
   <div class="card">
       <div class="chartwrap">
         <svg id="chart" viewBox="0 0 860 460" role="img" aria-label="Trajectoire normative"></svg>
+        <div id="chartgrid" style="display:none"></div>
         <div id="tip"></div>
       </div>
       <div class="legend">
@@ -371,6 +380,7 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
       </div>
       <div id="bo-status" class="sub" style="font-size:13px;margin:0 0 12px"></div>
       <div id="bo-svg" style="width:100%"></div>
+      <div id="bo-grid" style="display:none"></div>
       <div id="bo-legend" style="display:none;margin:10px 0 0">
         <div id="bo-bar" style="height:10px;border-radius:5px"></div>
         <div class="sub" style="display:flex;justify-content:space-between;font-size:12px;margin:4px 0 0;max-width:none">
@@ -478,6 +488,7 @@ const BANDLAB = {delta:"Delta 2–4 Hz", theta:"Theta 4–8 Hz", alpha:"Alpha 8�
                  beta:"Beta 12–30 Hz", gamma:"Gamma 30–45 Hz", all:"Broadband"};
 let MAN=null, CUR=null, SUBJ=[], NORM=null, BUNDLE=null, CAL={};
 let PROFILE=null;            // {marqueur: valeur brute} du dernier fichier depose
+let CURS=null;               // une entree par bande quand "All bands" est choisi
 
 /* ---- variante ajustee sur la qualite ----------------------------------
    Le champ decide : vide -> modele sans covariable, calibre pour quelqu'un
@@ -569,6 +580,20 @@ function markerFor(){
   return m||null;
 }
 
+/* Resout une entree de marqueur en objet exploitable par le dessin. */
+async function curFor(m){
+  const useQC = userQC()!==null && m.qc;
+  if(m.regional){
+    let B; try { B = await loadFamily(m.fam); } catch(e){ return null; }
+    const qk=m.key+"_qc";
+    const pick=(useQC&&B[qk])?qk:(B[m.key]?m.key:(B[qk]?qk:null));
+    if(!pick) return null;
+    return {...recToCur(B[pick], m.marker), marker:m.marker, meta:m};
+  }
+  const j=await (await fetch(DATA+m.marker+(useQC?"_qc":"")+".json")).json();
+  return {...j, marker:m.marker, meta:m};
+}
+
 /* un enregistrement de bundle a la forme attendue par render() */
 function recToCur(rec, marker){
   const n = rec.m[0].length;
@@ -587,10 +612,10 @@ function drawControls(){
     : MAN.regions)];
   const bs = bandsFor(state.type);
   const noBand = bs.length===0;
-  if(!noBand && !bs.includes(state.band)) state.band = bs[0];
+  if(!noBand && state.band!=="*" && !bs.includes(state.band)) state.band = bs[0];
   document.getElementById("controls").innerHTML =
     sel("f-type","Measure",types.map(t=>[t,LABEL[t]||t]),state.type)+
-    (noBand?"":sel("f-band","Band",bs.map(b=>[b,BANDLAB[b]||b]),state.band))+
+    (noBand?"":sel("f-band","Band",[["*","All bands"],...bs.map(b=>[b,BANDLAB[b]||b])],state.band))+
     (regions.length>1?sel("f-region","Region",regions.map(r=>[r,r]),state.region):"")+
     (state.region==="Whole brain"?"":sel("f-hemi","Hemisphere",[["lh","Left"],["rh","Right"]],state.hemi))+
     sel("f-sex","Sex",[["m","Male"],["f","Female"]],state.sex);
@@ -602,6 +627,29 @@ function drawControls(){
 
 /* ---- chargement + rendu ---------------------------------------------- */
 async function load(){
+  // mode toutes bandes : une trajectoire par bande, chacune avec son axe,
+  // les unites n'etant pas comparables d'une bande a l'autre
+  if(state.band === "*" && hasBand(state.type)){
+    const boxes=["qc","qc-raw"].map(i=>document.getElementById(i)).filter(Boolean);
+    const keep=state.band;
+    CURS=[];
+    for(const b of bandsFor(state.type)){
+      state.band=b;
+      const mm=markerFor();
+      if(!mm) continue;
+      const cur=await curFor(mm);
+      if(cur) CURS.push({band:b, cur, meta:mm});
+    }
+    state.band=keep; CUR=null;
+    const vf=document.getElementById("variant");
+    if(vf){ vf.textContent = userQC()!==null ? "quality-adjusted" : "unadjusted";
+            vf.classList.toggle("adj", userQC()!==null); }
+    boxes.forEach(x=>x.innerHTML=`<span>${CURS.length} band(s)</span>`
+      +`<span>measure <b>${LABEL[state.type]||state.type}</b></span>`
+      +`<span class="softnote">one axis per band: the units are not comparable across bands</span>`);
+    render(); return;
+  }
+  CURS=null;
   const m=markerFor();
   const boxes=["qc","qc-raw"].map(i=>document.getElementById(i)).filter(Boolean);
   const put=h=>boxes.forEach(b=>b.innerHTML=h);
@@ -660,23 +708,25 @@ async function load(){
 }
 
 const W=860,H=460,M={t:18,r:18,b:44,l:56};
-function render(){
-  const svg=document.getElementById("chart");
-  if(!CUR){svg.innerHTML="";return;}
-  const g=CUR[state.sex], ages=CUR.age, n=ages.length;
-  const off=calOf(CUR.marker);
-  const npc=NORM&&NORM[CUR.marker];
-  // l'axe est l'echelle de mesure : unites d'origine quand les constantes
-  // existent, sinon ecarts-types de controles. Un point sujet s'y pose tel quel.
+const WS=420,HS=250,MS={t:14,r:12,b:34,l:48};   // petites multiples
+
+/* Dessine une trajectoire dans un <svg>. Sert aussi bien au grand graphe
+   qu'aux vignettes par bande, la seule difference etant la geometrie et
+   l'etiquetage. */
+function paintChart(svg, cur, geom, opts){
+  const {w, h, m} = geom, small = !!opts.small;
+  if(!cur){ svg.innerHTML=""; return null; }
+  const g=cur[state.sex], ages=cur.age, n=ages.length;
+  const off=calOf(cur.marker);
+  const npc=NORM&&NORM[cur.marker];
   const toAxis=v=>npc?v*npc.std+npc.mean:v;
-  const std_=v=>npc?v:v;                       // valeur sujet deja dans l'unite de l'axe
   const P=[0.05,0.25,0.5,0.75,0.95];
-  const curves=P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],CUR.nu,CUR.tau))));
+  const curves=P.map(p=>ages.map((_,i)=>toAxis(shashQ(p,g.mu[i]+off,g.sigma[i],cur.nu,cur.tau))));
   let lo=Math.min(...curves[0]), hi=Math.max(...curves[4]);
-  SUBJ.forEach(s=>{if(s.ok){lo=Math.min(lo,std_(s.value));hi=Math.max(hi,std_(s.value));}});
+  if(!small) SUBJ.forEach(x=>{if(x.ok){lo=Math.min(lo,x.value);hi=Math.max(hi,x.value);}});
   // la cohorte etend l'axe jusqu'a ses 1er et 99e centiles : quelques valeurs
   // aberrantes ecraseraient la figure si on prenait les extremes
-  const CO = COHORT && COHORT.cols[CUR.marker] ? COHORT.cols[CUR.marker] : null;
+  const CO = COHORT && COHORT.cols[cur.marker] ? COHORT.cols[cur.marker] : null;
   let coClip = 0;
   if(CO){
     const v=[]; for(let i=0;i<COHORT.n;i++){
@@ -687,54 +737,72 @@ function render(){
   }
   const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
   const a0=ages[0], a1=ages[n-1];
-  const X=a=>M.l+(a-a0)/(a1-a0)*(W-M.l-M.r);
-  const Y=v=>H-M.b-(v-lo)/(hi-lo)*(H-M.t-M.b);
+  const X=a=>m.l+(a-a0)/(a1-a0)*(w-m.l-m.r);
+  const Y=v=>h-m.b-(v-lo)/(hi-lo)*(h-m.t-m.b);
   const path=c=>c.map((v,i)=>(i?"L":"M")+X(ages[i]).toFixed(1)+" "+Y(v).toFixed(1)).join("");
   const area=(c1,c2)=>path(c1)+c2.map((v,i)=>{const k=n-1-i;return "L"+X(ages[k]).toFixed(1)+" "+Y(c2[k]).toFixed(1);}).join("")+"Z";
-  const ticks=[0,5,10,20,30,40,50,60,70].filter(t=>t>=a0&&t<=a1);
-  const yt=[];const step=niceStep(hi-lo);
+  const ticks=(small?[1,5,10,20,40,60]:[0,5,10,20,30,40,50,60,70]).filter(t=>t>=a0&&t<=a1);
+  const yt=[];const step=niceStep(hi-lo, small?4:6);
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step)yt.push(v);
+  const fs=small?10:11;
   let s="";
-  yt.forEach(v=>{s+=`<line x1="${M.l}" y1="${Y(v).toFixed(1)}" x2="${W-M.r}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`+
-    `<text x="${M.l-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${(+v.toFixed(2))}</text>`;});
+  yt.forEach(v=>{s+=`<line x1="${m.l}" y1="${Y(v).toFixed(1)}" x2="${w-m.r}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`+
+    `<text x="${m.l-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="${fs}" fill="var(--muted)">${(+v.toFixed(3))}</text>`;});
   s+=`<path d="${area(curves[0],curves[4])}" fill="var(--band-outer)" opacity="0.55"/>`;
   s+=`<path d="${area(curves[1],curves[3])}" fill="var(--band-inner)" opacity="0.55"/>`;
   s+=`<path d="${path(curves[2])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-linejoin="round"/>`;
-  ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${H-M.b+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${t}</text>`;});
-  s+=`<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1"/>`;
-  s+=`<text x="${(M.l+W-M.r)/2}" y="${H-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Age (years)</text>`;
-  s+=`<text transform="translate(14,${(H-M.b+M.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">`+
-     (npc?`${CUR.marker} (measured units)`:"Standardised value (control SD)")+`</text>`;
+  ticks.forEach(t=>{s+=`<text x="${X(t).toFixed(1)}" y="${h-m.b+16}" text-anchor="middle" font-size="${fs}" fill="var(--muted)">${t}</text>`;});
+  s+=`<line x1="${m.l}" y1="${h-m.b}" x2="${w-m.r}" y2="${h-m.b}" stroke="var(--axis)" stroke-width="1"/>`;
+  if(!small){
+    s+=`<text x="${(m.l+w-m.r)/2}" y="${h-6}" text-anchor="middle" font-size="12" fill="var(--ink-2)">Age (years)</text>`;
+    s+=`<text transform="translate(14,${(h-m.b+m.t)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--ink-2)">`+
+       (npc?`${cur.marker} (measured units)`:"Standardised value (control SD)")+`</text>`;
+  }
   if(CO){
-    const cls=cohortClass(), want=state.sex==="f"?1:0;
-    const pts=[];
+    const cls=cohortClass(), want=state.sex==="f"?1:0, pts=[];
     for(let i=0;i<COHORT.n;i++){
       if(COHORT.sexF[i]!==want) continue;
       const v=CO[i], a=COHORT.age[i];
       if(!isFinite(v)||!isFinite(a)||a<a0||a>a1) continue;
       if(v<lo||v>hi){ coClip++; continue; }
-      const k=cls.of(i);
-      pts.push([X(a),Y(v),k]);
+      pts.push([X(a),Y(v),cls.of(i)]);
     }
-    // les sujets sans diagnostic d'abord, pour que les groupes restent lisibles
     pts.sort((p,q)=>(p[2]<0?0:1)-(q[2]<0?0:1));
+    const r=small?2:3;
     pts.forEach(([x,y,k])=>{
-      const col = k>=0?catColor(k):OTHER();
-      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${col}"`
-        +` stroke="var(--surface-1)" stroke-width="1.2"`
+      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${k>=0?catColor(k):OTHER()}"`
+        +` stroke="var(--surface-1)" stroke-width="${small?0.8:1.2}"`
         +(k>=0?'':' opacity="0.5"')+`/>`;
     });
-    if(coClip) s+=`<text x="${W-M.r}" y="${M.t+12}" text-anchor="end" font-size="11" fill="var(--muted)">`
-      +`${coClip} subject(s) off scale</text>`;
+    if(coClip) s+=`<text x="${w-m.r}" y="${m.t+11}" text-anchor="end" font-size="${fs}" fill="var(--muted)">`
+      +`${coClip} off scale</text>`;
   }
-  SUBJ.forEach(p=>{if(!p.ok||p.sex!==state.sex)return;
-    s+=`<circle cx="${X(p.age).toFixed(1)}" cy="${Y(std_(p.value)).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
-  s+=`<line id="cross" x1="0" y1="${M.t}" x2="0" y2="${H-M.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
-  s+=`<rect x="${M.l}" y="${M.t}" width="${W-M.l-M.r}" height="${H-M.t-M.b}" fill="transparent" id="hit"/>`;
+  if(!small){
+    SUBJ.forEach(x=>{if(!x.ok||x.sex!==state.sex)return;
+      s+=`<circle cx="${X(x.age).toFixed(1)}" cy="${Y(x.value).toFixed(1)}" r="5.5" fill="var(--subject)" stroke="var(--surface-1)" stroke-width="2"/>`;});
+    s+=`<line id="cross" x1="0" y1="${m.t}" x2="0" y2="${h-m.b}" stroke="var(--axis)" stroke-width="1" opacity="0"/>`;
+    s+=`<rect x="${m.l}" y="${m.t}" width="${w-m.l-m.r}" height="${h-m.t-m.b}" fill="transparent" id="hit"/>`;
+  }
   svg.innerHTML=s;
-  hookHover(ages,curves,X,Y,a0,a1);
+  return {ages,curves,X,Y,a0,a1};
 }
-function niceStep(range){const raw=range/6,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;
+
+function render(){
+  const one=document.getElementById("chart"), grid=document.getElementById("chartgrid");
+  if(CURS && CURS.length>1){
+    one.style.display="none"; grid.style.display="grid";
+    grid.innerHTML=CURS.map((c,i)=>
+      `<figure><figcaption>${BANDLAB[c.band]||c.band}</figcaption>`+
+      `<svg id="cg${i}" viewBox="0 0 ${WS} ${HS}" style="width:100%;height:auto" role="img"></svg></figure>`).join("");
+    CURS.forEach((c,i)=>paintChart(document.getElementById("cg"+i), c.cur,
+                                   {w:WS,h:HS,m:MS}, {small:true}));
+    return;
+  }
+  grid.style.display="none"; one.style.display="";
+  const r=paintChart(one, CUR, {w:W,h:H,m:M}, {small:false});
+  if(r) hookHover(r.ages,r.curves,r.X,r.Y,r.a0,r.a1);
+}
+function niceStep(range,div){const raw=range/(div||6),p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;
   return (f<1.5?1:f<3?2:f<7?5:10)*p;}
 function hookHover(ages,curves,X,Y,a0,a1){
   const svg=document.getElementById("chart"),tip=document.getElementById("tip"),
@@ -1406,6 +1474,52 @@ document.getElementById("co-clear").onclick = () => {
   if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
 };
 
+/* Ecarts moyens d'un groupe pour une famille, avec test et q-valeurs. */
+async function groupRows(fam, idx, useQC){
+  let B;
+  try { B = await loadFamily(fam); } catch(e){ return null; }
+  const rows = []; let noCol = 0, noModel = 0;
+  for(const region of RIDX.regions){
+    const marker = markerOf(fam, region);
+    if(!COHORT.cols[marker]){ noCol++; continue; }
+    const qk = region + "_qc";
+    const rec = (useQC && B[qk]) ? B[qk] : (B[region] || B[qk]);
+    if(!rec || rec.mean === undefined){ noModel++; continue; }
+    const z = cohortZ(marker, rec, idx);
+    const v = Array.prototype.filter.call(z, x => isFinite(x));
+    if(v.length < 20) continue;
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    const sd = Math.sqrt(v.reduce((a, b) => a + (b - m) * (b - m), 0) / (v.length - 1));
+    const t = sd > 0 ? m / (sd / Math.sqrt(v.length)) : 0;
+    rows.push({region, marker, mean: m, sd, n: v.length, p: 2 * (1 - pnorm(Math.abs(t)))});
+  }
+  if(rows.length){
+    const q = bhq(rows.map(r => r.p));
+    rows.forEach((r, k) => r.q = q[k]);
+  }
+  return {rows, noCol, noModel};
+}
+
+/* Colorie une copie de l'atlas et la renvoie en HTML. */
+function paintAtlas(rows, lim){
+  const P = DARK() ? POLES.dark : POLES.light;
+  const doc = new DOMParser().parseFromString(ATLAS, "image/svg+xml");
+  const svg = doc.documentElement;
+  svg.querySelectorAll("path.reg").forEach(p => p.style.fill = P.absent);
+  let drawn = 0;
+  for(const r of rows){
+    const el = svg.getElementById(r.region);
+    if(!el) continue;
+    el.style.fill = zColor(r.mean, lim);
+    if(r.q < 0.05){ el.style.stroke = DARK() ? "#fff" : "#111"; el.style.strokeWidth = "3"; }
+    const ti = doc.createElementNS("http://www.w3.org/2000/svg", "title");
+    ti.textContent = `${r.region}  mean z = ${r.mean.toFixed(3)}  (n = ${r.n}, q = ${r.q.toExponential(1)})`;
+    el.appendChild(ti); drawn++;
+  }
+  svg.setAttribute("style", "width:100%;height:auto");
+  return {html: svg.outerHTML, drawn};
+}
+
 /* Benjamini-Hochberg : q-valeurs, dans l'ordre des p fournis */
 function bhq(p){
   const n = p.length, o = p.map((v, i) => i).sort((a, b) => p[a] - p[b]);
@@ -1434,11 +1548,59 @@ async function drawGroupMap(){
   const idx = []; for(let i = 0; i < COHORT.n; i++) if(!flag || flag[i]) idx.push(i);
   const label = grp || "All subjects";
 
+  const useQC = Array.prototype.some.call(COHORT.qc, v => isFinite(v));
+  const grid = document.getElementById("bo-grid");
+  const single = document.getElementById("bo-svg");
+
+  if(fam.endsWith("_*")){
+    const type = fam.slice(0, -2);
+    const bands = BANDS_R.filter(b => RIDX.families[`${type}_${b}`]);
+    const sets = [];
+    for(const b of bands){
+      const r = await groupRows(`${type}_${b}`, idx, useQC);
+      if(r && r.rows.length) sets.push({band: b, ...r});
+    }
+    if(!sets.length){
+      st('<span class="flag">No region of this measure is present in the cohort file.</span>');
+      return; }
+    const sel2 = document.getElementById("bo-lim").value;
+    // echelle commune a toutes les bandes, sinon on compare des couleurs
+    // qui ne veulent pas dire la meme chose
+    const lim = sel2 === "auto"
+      ? Math.max(0.05, Math.ceil(Math.max(...sets.flatMap(s2 => s2.rows.map(r => Math.abs(r.mean)))) * 20) / 20)
+      : parseFloat(sel2);
+    single.style.display = "none"; grid.style.display = "grid";
+    grid.innerHTML = sets.map(s2 => {
+      const nsig = s2.rows.filter(r => r.q < 0.05).length;
+      return `<figure><figcaption>${BANDLAB[s2.band] || s2.band} `
+           + `<span class="off">${nsig}/${s2.rows.length} at q&lt;0.05</span></figcaption>`
+           + paintAtlas(s2.rows, lim).html + `</figure>`;
+    }).join("");
+    const tot = sets.reduce((a, s2) => a + s2.rows.filter(r => r.q < 0.05).length, 0);
+    st(`<b>${label}</b>, n = <b>${idx.length}</b>. Mean z against the normative model, `
+       + `<b>${sets.length}</b> bands, <b>${tot}</b> region-band pairs below q = 0.05 after FDR. `
+       + (useQC ? "Quality-adjusted models used. " : "No quality column: unadjusted models used. ")
+       + `Shared scale across bands.`);
+    document.getElementById("bo-bar").style.background = legendGradient(lim);
+    document.getElementById("bo-lo").textContent = (-lim).toFixed(2);
+    document.getElementById("bo-hi").textContent = "+" + lim.toFixed(2);
+    leg.style.display = "block";
+    const all = sets.flatMap(s2 => s2.rows.map(r => ({...r, band: s2.band})));
+    all.sort((a, b) => Math.abs(b.mean) - Math.abs(a.mean));
+    out.innerHTML =
+      `<table><thead><tr><th>Band</th><th>Region</th><th>n</th><th>Mean z</th><th>q (FDR)</th></tr></thead><tbody>`
+      + all.slice(0, 12).map(r => `<tr><td>${BANDLAB[r.band] || r.band}</td><td>${r.region}</td>`
+          + `<td>${r.n}</td><td>${r.mean.toFixed(3)}</td>`
+          + `<td>${r.q < 1e-4 ? r.q.toExponential(1) : r.q.toFixed(4)}</td></tr>`).join("")
+      + `</tbody></table><p class="sub" style="font-size:12px;margin-top:8px">`
+      + `The twelve largest mean deviations across all bands. FDR is applied within each band.</p>`;
+    return;
+  }
+  grid.style.display = "none"; single.style.display = "";
+
   let B;
   try { B = await loadFamily(fam); }
   catch(e){ st('<span class="flag">No regional models for this measure.</span>'); return; }
-
-  const useQC = Array.prototype.some.call(COHORT.qc, v => isFinite(v));
   const rows = [];
   let noCol = 0, noModel = 0, noShape = 0;
   for(const region of RIDX.regions){
@@ -1651,8 +1813,13 @@ async function loadAtlas(){
 async function initOwnMap(){
   const idx = await loadIndex();
   const sel = document.getElementById("bo-fam");
-  sel.innerHTML = Object.keys(idx.families).sort()
-    .map(f => `<option value="${f}">${famLabel(f)}</option>`).join("");
+  const fams = Object.keys(idx.families).sort();
+  const multi = [...new Set(fams.map(f => {
+    const i = f.lastIndexOf("_");
+    return BANDS_R.includes(f.slice(i + 1)) ? f.slice(0, i) : null;
+  }).filter(Boolean))].sort();
+  sel.innerHTML = multi.map(t => `<option value="${t}_*">${LABEL[t] || t} — all bands</option>`).join("")
+    + fams.map(f => `<option value="${f}">${famLabel(f)}</option>`).join("");
   document.getElementById("bo-svg").innerHTML = await loadAtlas();
   ["bo-fam","bo-lim","bo-group"].forEach(id => { const e = document.getElementById(id);
     if(e) e.onchange = drawOwnMap; });
@@ -1665,6 +1832,8 @@ async function drawOwnMap(){
   const svg = document.querySelector("#bo-svg svg");
   const leg = document.getElementById("bo-legend");
   const out = document.getElementById("bo-out");
+  document.getElementById("bo-grid").style.display = "none";
+  document.getElementById("bo-svg").style.display = "";
   if(!svg) return;
 
   const P = DARK() ? POLES.dark : POLES.light;
@@ -1678,8 +1847,13 @@ async function drawOwnMap(){
   if(!isFinite(age)){
     st('<span class="flag">Set the subject age in the panel on the right.</span>'); return; }
 
-  const fam = document.getElementById("bo-fam").value;
-  const lim = parseFloat(document.getElementById("bo-lim").value);
+  let fam = document.getElementById("bo-fam").value;
+  if(fam.endsWith("_*")){
+    const t = fam.slice(0, -2);
+    fam = BANDS_R.map(b => `${t}_${b}`).find(f => RIDX.families[f]) || fam;
+  }
+  const limSel = document.getElementById("bo-lim").value;
+  const lim = limSel === "auto" ? 3 : parseFloat(limSel);
   const qc  = userQC();
   let B;
   try { B = await loadFamily(fam); }
