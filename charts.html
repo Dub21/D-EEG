@@ -434,12 +434,20 @@ th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
                The published curves are those of the average training site. Sites differ, so a
                recording from a new site carries an unknown offset. Upload controls from your own
                site and the page estimates that offset and shifts the curves accordingly.
-               <br>CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
+               If the file you dropped holds a control group, pick it below and the page uses
+               those subjects directly.
+               <br>Otherwise, a CSV with four columns, <code>marker,value,age,sex</code>, one row per control and
                per measure. The estimate is shrunk toward zero when few controls are available, so
                a small sample moves the curves little rather than moving them wrongly.
                Bethlehem et al. recommend at least 100 controls for this step.</p>
+            <div class="controls" id="c-cohort" style="margin-bottom:10px;display:none">
+              <div class="ctl"><label for="c-group">Controls in the loaded file</label>
+                <select id="c-group"></select></div>
+              <div class="ctl"><label>&nbsp;</label>
+                <button id="c-run">Calibrate on this group</button></div>
+            </div>
             <div class="controls" style="margin-bottom:10px">
-              <div class="ctl"><label for="c-file">Controls file</label>
+              <div class="ctl"><label for="c-file">Or a separate controls file</label>
                 <input id="c-file" type="file" accept=".csv,.txt"></div>
               <div class="ctl"><label>&nbsp;</label>
                 <button id="c-clear" class="ghost">Clear calibration</button></div>
@@ -890,6 +898,8 @@ async function runProfile(file){
    k = n / (n + (sigma_residuel / sigma_inter-sites)^2).
    C'est l'estimateur BLUP d'un intercept aleatoire : avec peu de controles
    le decalage estime reste proche de 0 au lieu d'importer leur bruit. */
+const medianOf = a => { const v = [...a].sort((x, y) => x - y); const n = v.length;
+  return n % 2 ? v[(n-1)/2] : (v[n/2-1] + v[n/2]) / 2; };
 const CAL_MIN = 5;
 
 function calOf(marker){
@@ -919,7 +929,11 @@ async function runCalibration(file){
     if(!np || age < rec.a0 || age > rec.a1) continue;
     const {mu, sigma} = paramsAt(rec, age, sex);
     const v = (raw - np.mean) / np.std;
-    (acc[marker] = acc[marker] || {d: [], sg: [], sd: rec.site_sd || 0}).d.push(v - mu);
+    // ecart a la MEDIANE predite, pas a mu : sous SHASHo2 avec nu non nul les
+    // deux different de sigma*tau*sinh(nu/tau), et prendre mu biaisait
+    // l'offset de pres de 0.3 SD sur des controles parfaitement normatifs
+    const md = shashQ(0.5, mu, sigma, rec.nu, rec.tau);
+    (acc[marker] = acc[marker] || {d: [], sg: [], sd: rec.site_sd || 0}).d.push(v - md);
     acc[marker].sg.push(sigma);
   }
 
@@ -929,7 +943,8 @@ async function runCalibration(file){
     const n = a.d.length;
     if(n < CAL_MIN){ skipped.push(`${marker} (${n})`); continue; }
     if(!(a.sd > 0)){ skipped.push(`${marker} (no site variance)`); continue; }
-    const mean = a.d.reduce((x, y) => x + y, 0) / n;
+    // mediane et non moyenne : la distribution est asymetrique par construction
+    const mean = medianOf(a.d);
     const sbar = a.sg.reduce((x, y) => x + y, 0) / n;
     const k = n / (n + (sbar / a.sd) ** 2);
     CAL[marker] = {offset: k * mean, n, mean, k, sd: a.sd};
@@ -942,7 +957,14 @@ async function runCalibration(file){
     document.getElementById("c-out").innerHTML = "";
     render(); return;
   }
+  showCalibration(rows, st, unknown.size, skipped);
+  render();
+}
+
+/* Affiche le resultat d'une calibration, quelle qu'en soit la source. */
+function showCalibration(rows, st, nUnknown, skipped){
   rows.sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
+  const unknown = {size: nUnknown || 0};
   const nTot = rows.reduce((x, r) => Math.max(x, r.n), 0);
   st(`Calibrated <b>${rows.length}</b> measures on up to <b>${nTot}</b> controls. `
      + `Curves and scores now use your site's estimated offset.`
@@ -950,7 +972,7 @@ async function runCalibration(file){
      + (unknown.size ? ` ${unknown.size} unknown measure(s).` : "")
      + (skipped.length ? ` Skipped: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? "…" : ""}.` : ""));
   document.getElementById("c-out").innerHTML =
-    `<table><thead><tr><th>Measure</th><th>n</th><th>Raw shift</th>`
+    `<table><thead><tr><th>Measure</th><th>n</th><th>Median shift</th>`
     + `<th>Shrinkage</th><th>Applied offset</th></tr></thead><tbody>`
     + rows.map(r => `<tr><td>${r.marker}</td><td>${r.n}</td>`
         + `<td>${r.mean.toFixed(3)}</td><td>${r.k.toFixed(2)}</td>`
@@ -959,6 +981,7 @@ async function runCalibration(file){
     + `Values in standard deviations of the control distribution. Shrinkage is the weight `
     + `given to your controls: it approaches 1 with a large sample and 0 with a few.</p>`;
   render();
+  if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
 }
 
 document.getElementById("c-file").onchange = e => {
@@ -1259,6 +1282,16 @@ async function loadCohort(file){
   gs.innerHTML = '<option value="">All diagnoses</option>'
     + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
   document.getElementById("co-wrap").style.display = "";
+  const cg = document.getElementById("c-group");
+  if(cg){
+    cg.innerHTML = order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
+    // pre-selectionne le groupe qui ressemble a des controles
+    const ctl = order.find(g => /no diagnosis|control|typical|healthy/i.test(g));
+    // ouvre le bloc quand le fichier contient de quoi calibrer, sinon
+    // personne ne le decouvre
+    if(ctl){ cg.value = ctl; const d = cg.closest("details"); if(d) d.open = true; }
+    document.getElementById("c-cohort").style.display = order.length ? "" : "none";
+  }
   const bg = document.getElementById("bo-group");
   if(bg){ bg.innerHTML = `<option value="">All subjects (${n})</option>`
             + order.map(g => `<option value="${g}">${g} (${G[g].n})</option>`).join("");
@@ -1363,6 +1396,7 @@ document.getElementById("co-clear").onclick = () => {
   document.getElementById("co-status").innerHTML = "";
   document.getElementById("co-legend").innerHTML = "";
   document.getElementById("co-wrap").style.display = "none";
+  document.getElementById("c-cohort").style.display = "none";
   const w = document.getElementById("bo-gwrap"); if(w) w.style.display = "none";
   PROFILE = null;
   document.getElementById("p-status").innerHTML = "";
@@ -1469,6 +1503,91 @@ async function drawGroupMap(){
     + `Benjamini-Hochberg at q &lt; 0.05; the test is a normal approximation, which is close at these `
     + `sample sizes. Grey means no column, no model, or no shape in the atlas.</p>`;
 }
+
+/* Calibration sur un groupe de la cohorte deja chargee. Meme estimateur que
+   la version par fichier : ecart moyen au mu predit, retreci par
+   k = n/(n + (sigma/sd_site)^2). Si ce groupe a servi a ajuster les modeles,
+   l'offset ressort proche de zero, ce qui est le controle negatif attendu. */
+async function calibrateOnCohort(){
+  const st = t => document.getElementById("c-status").innerHTML = t;
+  if(!COHORT){ st("Load a cohort file first."); return; }
+  const grp = document.getElementById("c-group").value;
+  if(!grp || !COHORT.groups[grp]){ st("Pick a group."); return; }
+  const flag = COHORT.groups[grp].flag;
+  const idx = []; for(let i = 0; i < COHORT.n; i++) if(flag[i]) idx.push(i);
+  if(idx.length < CAL_MIN){ st(`<span class="flag">Only ${idx.length} subject(s) in that group.</span>`); return; }
+
+  await loadNorm();
+  st("Collecting the models these measures need…");
+  const B = (await loadBundle(st)).markers;
+  await loadIndex().catch(() => {});
+  const fams = new Set();
+  for(const m of Object.keys(COHORT.cols)){
+    if(!isRegional(m)) continue;
+    const f = famOfMarker(m);
+    if(f && RIDX && RIDX.families[f]) fams.add(f);
+  }
+  let done = 0;
+  for(const f of fams){ await loadFamily(f).catch(() => {});
+    st(`Loading regional parameters… ${++done}/${fams.size}`); }
+
+  const rows = [], skipped = [];
+  for(const marker of Object.keys(COHORT.cols)){
+    let rec = null;
+    if(isRegional(marker)){
+      const f = famOfMarker(marker), key = regionOfMarker(marker);
+      const F = RFAM[f];
+      if(F) rec = F[key] || F[key + "_qc"];
+    } else {
+      rec = B[marker] || B[marker + "_qc"];
+    }
+    if(!rec || rec.mean === undefined) continue;
+    if(!(rec.site_sd > 0)){ skipped.push(`${marker} (no site variance)`); continue; }
+    const d = [], sg = [];
+    for(const i of idx){
+      const raw = COHORT.cols[marker][i], age = COHORT.age[i];
+      if(!isFinite(raw) || !isFinite(age) || age < rec.a0 || age > rec.a1) continue;
+      const q = rec.qc_ref !== undefined && isFinite(COHORT.qc[i])
+        ? {dmu: (rec.qc_coef_mu || 0) * (COHORT.qc[i] - rec.qc_ref),
+           fsg: Math.exp((rec.qc_coef_sigma || 0) * (COHORT.qc[i] - rec.qc_ref))}
+        : {dmu: 0, fsg: 1};
+      const {mu, sigma} = paramsAt(rec, age, COHORT.sexF[i] ? "f" : "m");
+      const m0 = mu + q.dmu, s0 = sigma * q.fsg;
+      d.push((raw - rec.mean) / rec.std - shashQ(0.5, m0, s0, rec.nu, rec.tau));
+      sg.push(s0);
+    }
+    if(d.length < CAL_MIN){ skipped.push(`${marker} (${d.length})`); continue; }
+    const mean = medianOf(d);
+    const sbar = sg.reduce((x, y) => x + y, 0) / sg.length;
+    const k = d.length / (d.length + (sbar / rec.site_sd) ** 2);
+    CAL[marker] = {offset: k * mean, n: d.length, mean, k, sd: rec.site_sd};
+    rows.push({marker, n: d.length, mean, k, offset: k * mean, sd: rec.site_sd});
+  }
+  if(!rows.length){
+    st('<span class="flag">No measure could be calibrated on that group.</span>');
+    document.getElementById("c-out").innerHTML = ""; return;
+  }
+  showCalibration(rows, st, 0, skipped);
+  render();
+  if(typeof BO_SEEN !== "undefined" && BO_SEEN) drawOwnMap();
+}
+
+/* <region>_<hemi>_<bande>_<famille> -> famille, et -> <region>_<hemi> */
+function famOfMarker(m){
+  const p = m.split("_");
+  const h = p.indexOf("lh") >= 0 ? p.indexOf("lh") : p.indexOf("rh");
+  if(h < 0) return null;
+  const rest = p.slice(h + 1);
+  if(rest.length === 1) return rest[0];
+  return rest.length === 2 && MEAN_BANDS.includes(rest[0]) ? `${rest[1]}_${rest[0]}` : null;
+}
+function regionOfMarker(m){
+  const p = m.split("_");
+  const h = p.indexOf("lh") >= 0 ? p.indexOf("lh") : p.indexOf("rh");
+  return h < 0 ? null : p.slice(0, h + 1).join("_");
+}
+
+document.getElementById("c-run").onclick = calibrateOnCohort;
 
 /* ---- carte cerebrale construite a partir des donnees deposees ---------- */
 const RDIR = DATA + "regional/";
