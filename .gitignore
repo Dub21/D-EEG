@@ -19,3 +19,5 @@ __pycache__/
 
 # residus non versionnes
 static/data/normative/regional/_stray/
+Claude outputs/
+Claude outputs/
